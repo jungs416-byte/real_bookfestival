@@ -3,1329 +3,340 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>독서캠프 수강신청 (날짜별 입력)</title>
+  <title>관리자 — 출석부 (강의별 학생명단)</title>
   <style>
-    :root { --border-color:#666; --ok-color:#138000; --bad-color:#d10000; --warn-color:#ff8c00; }
-    *,*::before,*::after{box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;max-width:980px;margin:0 auto;padding:16px;line-height:1.45}
-    h1{text-align:center;margin:8px 0}
-    fieldset{margin:12px 0;padding:12px;border:1px solid #bbb}
-    legend{font-weight:700}
-    .row{margin:8px 0}
-    table{border-collapse:collapse;width:100%;margin-top:12px;table-layout:fixed}
-    th,td{border:1px solid var(--border-color);padding:8px;text-align:center;font-size:13px;word-break:break-word}
-    th{background:#f7f7f7;font-weight:700}
-    .table-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #e6e6e6;padding:6px;background:#fff}
-
-    /* 색상 매핑: 영화 = 살구색, 마네 = 흐린 파랑 */
-    td.cell-read{background:#ccffcc !important;color:#000;font-weight:600}      /* 책읽기 - 연한 초록 */
-    td.cell-movie{background:#ffd2a6 !important;color:#000;font-weight:600}     /* 영화 - 살구색 */
-    td.cell-lounge{background:#cce5ff !important;color:#000;font-weight:600}    /* 마네 - 흐린 파랑 */
-    td.cell-bible{background:#fff9b3 !important;color:#000;font-weight:600}     /* 예배/식 - 연한 노랑 */
-
-    /* 추가 색상: 요청된 특정 이벤트 */
-    td.cell-book-person{background:#ffb74d !important;color:#000;font-weight:700} /* 주황 - 책과 사람(소명발표) */
-    td.cell-sports{background:#8b5a2b !important;color:#fff;font-weight:700}      /* 갈색 - 책과 운동(스케이트장) */
-
-    .ok{color:var(--ok-color) !important;font-weight:700 !important}
-    .bad{color:var(--bad-color) !important;font-weight:700 !important}
-    .status{margin-top:6px;font-size:13px}
-    .cap-info { font-size:12px; margin-left:8px; color:#444; font-weight:600; }
-
-    .date-block { border:1px solid #e0e0e0; padding:10px; margin:10px 0; border-radius:8px; background:#fafafa; }
-    .date-block h3 { margin:4px 0 8px 0; font-size:15px; }
-    .date-grid { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; }
-    .date-col { display:flex; flex-direction:column; gap:6px; min-width:150px; }
-    .date-col label { display:flex; align-items:center; gap:6px; white-space:nowrap; font-size:13px; }
-    .date-col select { min-width:140px; }
-
-    .reading-row, .bible-row{
-      display:flex;
-      gap:6px;
-      align-items:center;
-      flex-wrap:nowrap;
-      overflow-x:auto;
-      -webkit-overflow-scrolling:touch;
-    }
-    .reading-row strong, .bible-row strong{min-width:60px; flex:0 0 auto; font-size:13px;}
-    .reading-row label, .bible-row label{display:inline-flex; gap:6px; align-items:center; flex:0 0 auto; white-space:nowrap; font-size:12px;}
-
-    select, input[type="text"], button{font-size:14px}
-    select{
-      -webkit-appearance: auto;
-      appearance: auto;
-      padding:6px 6px;
-      border-radius:6px;
-      border:1px solid #cfcfcf;
-      background:#fff;
-      color:#000;
-      display:inline-block;
-      white-space:nowrap;
-    }
-    .reading-row select { font-size:12px; padding:6px 6px; min-width:80px; max-width:140px; }
-    .reading-row select option { white-space:nowrap; }
-    select.full { width:auto; max-width:220px; box-sizing:border-box; }
-    input[type="checkbox"]{transform:scale(1.05);margin-right:6px}
-    input[type="text"], select{padding:8px}
-    button{padding:10px 14px;font-size:15px;cursor:pointer;border-radius:6px}
-    button.primary{background:#4CAF50;color:#fff;border:none}
-    button[disabled]{opacity:.6;cursor:not-allowed}
-
-    label.disabled { opacity: 0.45; }
-    .cap-info.full { color: var(--bad-color); font-weight:700; }
-    .cap-info.warn { color:var(--warn-color); font-weight:700; }
-
-    .summary-line { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:6px 0; font-weight:700; }
-    .summary-item.ok { color:var(--ok-color); }
-    .summary-item.bad { color:var(--bad-color); }
-
-    @media (max-width:900px){
-      .date-grid { flex-direction:column; }
-      .date-col { min-width:unset; width:100%; }
-      .reading-row select { max-width:110px; }
+    :root{--border:#e6e6e6;--accent:#0275d8}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;max-width:1100px;margin:16px auto;padding:16px}
+    h1{margin:0 0 12px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+    select,input[type="text"]{padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px}
+    button{padding:8px 12px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    button.ghost{background:#f5f5f5;color:#000;border:1px solid #ddd}
+    .panel{border:1px solid var(--border);padding:12px;border-radius:8px;background:#fff}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border:1px solid var(--border);padding:8px;text-align:left;font-size:13px}
+    th{background:#f7f7f7}
+    .muted{color:#666;font-size:13px}
+    .info{font-size:13px;margin-bottom:8px}
+    .actions{display:flex;gap:8px;margin-top:8px}
+    .loading{color:#666;font-style:italic}
+    @media (max-width:880px){
+      .controls{flex-direction:column;align-items:stretch}
     }
   </style>
 </head>
 <body>
-  <h1>중학교 독서캠프 수강신청 (날짜별 입력)</h1>
+  <h1>관리자 — 출석부 (강의별 학생명단)</h1>
+  <div class="info muted">날짜, 교시(또는 블록), 강의(또는 강의실/활동)를 선택하면 해당 수업에 신청한 학생 명단을 불러옵니다. CSV로 내보내기 가능.</div>
 
-  <fieldset>
-    <legend>학생 정보</legend>
-    <div class="row">반(주관식): <input type="text" id="cls" placeholder="예: 2-3반" aria-label="반"></div>
-    <div class="row">이름: <input type="text" id="name" aria-label="이름"></div>
-  </fieldset>
+  <div class="panel">
+    <div class="controls">
+      <label>
+        날짜
+        <select id="selDate"></select>
+      </label>
 
-  <!-- 날짜별 블록 (입력 폼 restored) -->
-  <div id="scheduleByDate">
+      <label>
+        교시
+        <select id="selPeriod">
+          <option value="1">1교시</option>
+          <option value="2">2교시</option>
+          <option value="3">3교시</option>
+          <option value="4">4교시</option>
+          <option value="5">5교시</option>
+          <option value="6">6교시</option>
+          <option value="1-2">1-2교시 (블록)</option>
+          <option value="3-4">3-4교시 (블록)</option>
+        </select>
+      </label>
 
-    <!-- 1/26 (선택수업만) -->
-    <div class="date-block" data-day="1/26(월)">
-      <h3>1/26(월)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <label>선택수업 (5교시)
-            <select class="selDay" id="sel-0126">
-              <option>과목 선택</option><option>선택1</option><option>선택2</option><option>선택3</option><option>선택4</option><option>선택5</option><option>선택6</option>
-            </select>
-          </label>
-        </div>
-      </div>
+      <label style="flex:1">
+        강의 / 활동 (강의실)
+        <select id="selOffering" style="width:100%"><option>먼저 날짜와 교시를 선택하세요</option></select>
+      </label>
+
+      <button id="btnLoad">명단 불러오기</button>
+      <button id="btnExport" class="ghost">CSV 내보내기</button>
     </div>
 
-    <!-- 1/27 -->
-    <div class="date-block" data-day="1/27(화)">
-      <h3>1/27(화)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="1/27(화)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="1/27(화)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="1/27(화)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>4교시
-            <select class="read full" data-day="1/27(화)" data-period="4">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
+    <div id="status" class="muted"></div>
 
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="1/27(화)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="mov" data-day="1/27(화)" data-start="3">3-4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="1/27(화)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="lou" data-day="1/27(화)" data-period="4">4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="1/27(화)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="1/27(화)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>선택수업</strong>
-          <label>
-            <select class="selDay" id="sel-0127">
-              <option>과목 선택</option><option>선택1</option><option>선택2</option><option>선택3</option><option>선택4</option><option>선택5</option><option>선택6</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- 1/28 -->
-    <div class="date-block" data-day="1/28(수)">
-      <h3>1/28(수)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="1/28(수)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="1/28(수)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="1/28(수)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>4교시
-            <select class="read full" data-day="1/28(수)" data-period="4">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="1/28(수)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="mov" data-day="1/28(수)" data-start="3">3-4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="1/28(수)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="lou" data-day="1/28(수)" data-period="4">4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="1/28(수)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="1/28(수)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>선택수업</strong>
-          <label>
-            <select class="selDay" id="sel-0128">
-              <option>과목 선택</option><option>선택1</option><option>선택2</option><option>선택3</option><option>선택4</option><option>선택5</option><option>선택6</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- 1/29 -->
-    <div class="date-block" data-day="1/29(목)">
-      <h3>1/29(목)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="1/29(목)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="1/29(목)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="1/29(목)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>4교시
-            <select class="read full" data-day="1/29(목)" data-period="4">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="1/29(목)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="mov" data-day="1/29(목)" data-start="3">3-4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="1/29(목)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="lou" data-day="1/29(목)" data-period="4">4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="1/29(목)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="1/29(목)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>선택수업</strong>
-          <label>
-            <select class="selDay" id="sel-0129">
-              <option>과목 선택</option><option>선택1</option><option>선택2</option><option>선택3</option><option>선택4</option><option>선택5</option><option>선택6</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- 1/30 -->
-    <div class="date-block" data-day="1/30(금)">
-      <h3>1/30(금)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="1/30(금)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="1/30(금)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="1/30(금)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>4교시
-            <select class="read full" data-day="1/30(금)" data-period="4">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="1/30(금)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="mov" data-day="1/30(금)" data-start="3">3-4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="1/30(금)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="lou" data-day="1/30(금)" data-period="4">4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="1/30(금)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="1/30(금)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- 2/2 -->
-    <div class="date-block" data-day="2/2(월)">
-      <h3>2/2(월)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="2/2(월)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="2/2(월)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="2/2(월)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="2/2(월)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="2/2(월)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="2/2(월)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="2/2(월)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>선택수업</strong>
-          <label>
-            <select class="selDay" id="sel-0202">
-              <option>과목 선택</option><option>선택1</option><option>선택2</option><option>선택3</option><option>선택4</option><option>선택5</option><option>선택6</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2/3 -->
-    <div class="date-block" data-day="2/3(화)">
-      <h3>2/3(화)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="2/3(화)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="2/3(화)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="2/3(화)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>4교시
-            <select class="read full" data-day="2/3(화)" data-period="4">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="2/3(화)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="mov" data-day="2/3(화)" data-start="3">3-4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="2/3(화)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="lou" data-day="2/3(화)" data-period="4">4교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="2/3(화)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="2/3(화)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- 2/4 (special day events only; no inputs) -->
-    <div class="date-block" data-day="2/4(수)">
-      <h3>2/4(수)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <label>1-4교시: <strong>책과 운동(스케이트장)</strong></label>
-          <label>5-6교시: <strong>고등 졸업식</strong></label>
-          <label style="opacity:.8;font-size:12px">(고정 일정 — 선택 입력 항목 없음)</label>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2/5 -->
-    <div class="date-block" data-day="2/5(목)">
-      <h3>2/5(목)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>책읽기</strong>
-          <label>1교시
-            <select class="read full" data-day="2/5(목)" data-period="1">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>2교시
-            <select class="read full" data-day="2/5(목)" data-period="2">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-          <label>3교시
-            <select class="read full" data-day="2/5(목)" data-period="3">
-              <option>선택 안함</option><option>승현반</option><option>소영반</option><option>현주반</option><option>현승반</option><option>미리반</option><option>정식반</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="date-col">
-          <strong>영화</strong>
-          <label><input type="checkbox" class="mov" data-day="2/5(목)" data-start="1">1-2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>마네</strong>
-          <label><input type="checkbox" class="lou" data-day="2/5(목)" data-period="3">3교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-        <div class="date-col">
-          <strong>성경동화</strong>
-          <label><input type="checkbox" class="bible" data-day="2/5(목)" data-period="1">1교시 <span class="cap-info" aria-hidden="true"></span></label>
-          <label><input type="checkbox" class="bible" data-day="2/5(목)" data-period="2">2교시 <span class="cap-info" aria-hidden="true"></span></label>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- 2/6 fixed events -->
-    <div class="date-block" data-day="2/6(금)">
-      <h3>2/6(금)</h3>
-      <div class="date-grid">
-        <div class="date-col">
-          <strong>종례 / 마무리</strong>
-          <label>1-2교시: <span style="font-weight:700">반별정리</span></label>
-          <label>3-4교시: <span style="font-weight:700">돋움예배</span></label>
-          <label style="opacity:0.85; font-size:12px; margin-top:6px;">(해당 시간은 고정된 일정으로 선택 항목이 없습니다.)</label>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- error-only messages -->
-  <div id="messages" style="margin-top:8px">
-    <div id="readMsg" class="status" aria-live="polite"></div>
-    <div id="movMsg" class="status" aria-live="polite"></div>
-    <div id="louMsg" class="status" aria-live="polite"></div>
-    <div id="bibleMsg" class="status" aria-live="polite"></div>
-    <div id="selMsg" class="status" aria-live="polite"></div>
-  </div>
-
-  <!-- single summary line (only this one is shown) -->
-  <div id="summaryContainerWrapper" style="margin-top:8px">
-    <div id="summaryContainer" class="summary-line" aria-live="polite">
-      <div id="summaryRead" class="summary-item"></div>
-      <div id="summaryMovie" class="summary-item"></div>
-      <div id="summaryLou" class="summary-item"></div>
-      <div id="summaryBible" class="summary-item"></div>
+    <div id="resultArea" style="margin-top:12px">
+      <div id="attendanceInfo" class="info"></div>
+      <div id="attendanceTableWrap"></div>
     </div>
   </div>
-
-  <div class="action-row" style="margin-top:12px">
-    <button id="makeBtn" type="button">시간표 만들기</button>
-    <button id="submitBtn" class="primary" type="button">최종 수강 신청 (DB 저장)</button>
-  </div>
-
-  <div id="result" style="margin-top:14px"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // Supabase 설정 (index-2/index-3과 동일한 값 사용)
     const SUPABASE_URL = 'https://metdfyhhcvvjmkkwyvcf.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ldGRmeWhoY3Z2am1ra3d5dmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5OTQzOTUsImV4cCI6MjA4MDU3MDM5NX0.vcC6tjeYU9CQlC92jJOKgcf3cR0t36g5J19pk2uQrDs';
     const { createClient } = window.supabase;
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-    function stripSeatSuffix(s){ if (s === null || s === undefined) return ''; return String(s).replace(/\s*(\(|（)\s*(남은\s*)?\d+\s*석\s*(\)|）)\s*$/i, '').trim(); }
+    // 날짜 상수 (index-2 / index-3과 동일)
+    const DAYS = ["1/26(월)","1/27(화)","1/28(수)","1/29(목)","1/30(금)","2/2(월)","2/3(화)","2/4(수)","2/5(목)","2/6(금)"];
+    const PERIODS = [1,2,3,4,5,6];
 
-    function initializeStableOptions() {
-      document.querySelectorAll('select').forEach(sel=>{
-        Array.from(sel.options).forEach(opt=>{
-          if (opt.dataset.baseLabel === undefined) {
-            const base = stripSeatSuffix(opt.textContent || '');
-            opt.dataset.baseLabel = base;
-            if (/^(과목\s?선택|선택\s?안함|)$/i.test(base)) {
-              opt.value = '';
-              opt.setAttribute('value','');
-              opt.dataset.placeholder = '1';
-            } else {
-              opt.value = base;
-              opt.setAttribute('value', base);
-            }
-          }
-        });
-      });
+    // 캐시: course_capacity 전체(관리자용 인덱스)
+    let courseCapacities = [];
+
+    // 초기화: 날짜 드롭다운 채우기, course_capacity 로드
+    async function init(){
+      const selDate = document.getElementById('selDate');
+      selDate.innerHTML = DAYS.map(d => `<option value="${d}">${d}</option>`).join('');
+      // load course_capacity records
+      await loadCourseCapacities();
+      // wire events
+      document.getElementById('selDate').addEventListener('change', updateOfferingList);
+      document.getElementById('selPeriod').addEventListener('change', updateOfferingList);
+      document.getElementById('btnLoad').addEventListener('click', loadAttendanceList);
+      document.getElementById('btnExport').addEventListener('click', exportCsvOfCurrent);
+      // initial fill
+      updateOfferingList();
+      setStatus('준비 완료');
     }
 
-    // Remove all "승현반" options from every .read select (global removal)
-    function removeSeungHyunOptionsGlobal() {
-      document.querySelectorAll('.read').forEach(sel => {
-        for (let i = sel.options.length - 1; i >= 0; i--) {
-          const opt = sel.options[i];
-          const base = (opt.dataset && opt.dataset.baseLabel !== undefined) ? opt.dataset.baseLabel : stripSeatSuffix(opt.textContent || '');
-          if (String(base).trim() === '승현반') {
-            if (sel.selectedIndex === i) sel.selectedIndex = 0;
-            sel.remove(i);
-          }
-        }
-      });
+    function setStatus(msg, loading=false){
+      const s = document.getElementById('status');
+      s.textContent = msg || '';
+      s.className = loading ? 'loading' : 'muted';
     }
 
-    async function refreshReadAndSelRemaining() {
+    // load all course_capacity rows to courseCapacities array
+    async function loadCourseCapacities(){
       try {
-        // ensure the unwanted options stay removed even after updates
-        removeSeungHyunOptionsGlobal();
-
-        const cls = document.getElementById('cls').value.trim();
-        const name = document.getElementById('name').value.trim();
-        const currentStudentId = (cls && name) ? (await supabaseClient.from('students').select('student_id').eq('class', cls).eq('name', name).limit(1)).data?.[0]?.student_id || null : null;
-
-        const { data, error } = await supabaseClient.rpc('get_remaining_capacities_expanded', { p_exclude_student_id: currentStudentId });
-        if (error) { console.error('[seats] RPC error', error); return; }
-        if (!Array.isArray(data) || data.length === 0) return;
-
-        const aliasMap = new Map();
-        const normalize = s => (s===null||s===undefined) ? '' : String(s).replace(/[（）]/g, c => c==='（'?'(':')').replace(/\s+/g,' ').trim().toLowerCase();
-        data.forEach(r => {
-          const raw = String(r.course_capacity_id || '');
-          const rec = { original_id: r.original_capacity_id, remaining: Number(r.remaining||0), max_capacity: Number(r.max_capacity||0), current_count: Number(r.current_count||0), alias: raw };
-          aliasMap.set(normalize(raw), rec);
-          aliasMap.set(raw, rec);
-        });
-        const lookup = key => { if (key === null || key === undefined) return null; const norm = normalize(key); return aliasMap.get(norm) || aliasMap.get(key) || null; };
-
-        // selDay updates
-        const dayNames = {'sel-0126':'0126','sel-0127':'0127','sel-0128':'0128','sel-0129':'0129','sel-0202':'0202'};
-        Object.entries(dayNames).forEach(([selId, day])=>{
-          const sel = document.getElementById(selId);
-          if (!sel) return;
-          const focused = (document.activeElement === sel);
-          Array.from(sel.options).forEach(opt=>{
-            if (!opt.dataset.baseLabel) opt.dataset.baseLabel = stripSeatSuffix(opt.textContent || '');
-            const val = (opt.dataset.placeholder ? '' : (opt.value && opt.value.trim()));
-            if (!val) { opt.textContent = opt.dataset.baseLabel; return; }
-            const candidates = [`select_${day}_${val}`, val];
-            let rec = null;
-            for (const k of candidates) { rec = lookup(k); if (rec) break; }
-            if (rec) {
-              opt.textContent = `${opt.dataset.baseLabel} (남은 ${rec.remaining}석)`;
-              const shouldDisable = (rec.remaining <= 0);
-              if (!focused) opt.disabled = shouldDisable;
-              opt.setAttribute('aria-disabled', shouldDisable ? 'true' : 'false');
-            } else {
-              opt.textContent = opt.dataset.baseLabel;
-            }
-          });
-        });
-
-        // read selects updates
-        document.querySelectorAll('.read').forEach(sel=>{
-          const focused = (document.activeElement === sel);
-          Array.from(sel.options).forEach(opt=>{
-            if (!opt.dataset.baseLabel) opt.dataset.baseLabel = stripSeatSuffix(opt.textContent || '');
-            const val = (opt.dataset.placeholder ? '' : (opt.value && opt.value.trim()));
-            if (!val) { opt.textContent = opt.dataset.baseLabel; return; }
-            const day = sel.dataset.day;
-            const period = sel.dataset.period;
-            const candidates = [
-              `책 읽기_${day}_${period}교시_${val}`,
-              `책읽기_${day}_${period}교시_${val}`,
-              val
-            ];
-            let rec = null;
-            for (const k of candidates) { rec = lookup(k); if (rec) break; }
-            if (rec) {
-              opt.textContent = `${opt.dataset.baseLabel} (남은 ${rec.remaining}석)`;
-              const shouldDisable = (rec.remaining <= 0);
-              if (!focused) opt.disabled = shouldDisable;
-              opt.setAttribute('aria-disabled', shouldDisable ? 'true' : 'false');
-            } else {
-              opt.textContent = opt.dataset.baseLabel;
-            }
-          });
-        });
-
-        // make sure removed options remain removed after we update text/disabled status
-        removeSeungHyunOptionsGlobal();
-
-        // mov/lou/bible checkbox labels
-        document.querySelectorAll('.mov, .lou, .bible').forEach(cb=>{
-          const label = cb.closest('label');
-          if (!label) return;
-          let span = label.querySelector('.cap-info');
-          if (!span) { span = document.createElement('span'); span.className = 'cap-info'; label.appendChild(span); }
-
-          let candidates = [];
-          if (cb.classList.contains('mov')) {
-            const blk = (Number(cb.dataset.start) === 1) ? '1-2교시' : '3-4교시';
-            candidates = [
-              `movie_${cb.dataset.day}_${blk}`,
-              `movie_${cb.dataset.day}_${blk.replace('교시','')}`,
-              `movie_${cb.dataset.day}_${cb.dataset.start}`,
-              `영화_${cb.dataset.day}_${blk}`
-            ];
-          } else if (cb.classList.contains('lou')) {
-            candidates = [
-              `마네_${cb.dataset.day}_${cb.dataset.period}교시`,
-              `마네_${cb.dataset.day}_${cb.dataset.period}`,
-              `mane_${cb.dataset.day}_${cb.dataset.period}교시`
-            ];
-          } else if (cb.classList.contains('bible')) {
-            candidates = [
-              `bible_${cb.dataset.day}_${cb.dataset.period}교시`,
-              `bible_${cb.dataset.day}_${cb.dataset.period}`,
-              `성경동화_${cb.dataset.day}_${cb.dataset.period}교시`
-            ];
-          }
-
-          let rec = null;
-          for (const k of candidates) { rec = lookup(k); if (rec) break; }
-          if (rec) {
-            span.textContent = ` (남은 ${rec.remaining}석)`;
-            const shouldDisable = (rec.remaining <= 0);
-            cb.disabled = shouldDisable;
-            if (shouldDisable) label.classList.add('disabled'); else label.classList.remove('disabled');
-          } else {
-            span.textContent = '';
-          }
-        });
-
-      } catch (err) {
-        console.error('[seats] unexpected error', err);
-      }
-    }
-
-    // helper: robustly count read selections (ignores placeholder options)
-    function countReadSelections() {
-      let total = 0;
-      document.querySelectorAll('.read').forEach(sel=>{
-        const idx = sel.selectedIndex;
-        if (idx >= 0) {
-          const opt = sel.options[idx];
-          const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-          const val = opt && opt.value ? String(opt.value).trim() : '';
-          if (!isPlaceholder && val !== '') total++;
-        }
-      });
-      return total;
-    }
-
-    // helper: check whether a specific day has at least one read selected
-    function hasReadOnDay(dayName) {
-      return Array.from(document.querySelectorAll('.read')).some(sel=>{
-        if (sel.dataset.day !== dayName) return false;
-        const idx = sel.selectedIndex;
-        if (idx < 0) return false;
-        const opt = sel.options[idx];
-        const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-        const val = opt && opt.value ? String(opt.value).trim() : '';
-        return (!isPlaceholder && val !== '');
-      });
-    }
-
-    // compute total scheduled periods (hours): counts unique day+period occupied by any chosen class
-    function computeTotalScheduledPeriods() {
-      const occupied = new Set();
-      // book reading selections (each occupies its period)
-      document.querySelectorAll('.read').forEach(sel=>{
-        const idx = sel.selectedIndex;
-        if (idx >= 0) {
-          const opt = sel.options[idx];
-          const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-          const val = opt && opt.value ? String(opt.value).trim() : '';
-          if (!isPlaceholder && val !== '') {
-            occupied.add(`${sel.dataset.day}_${sel.dataset.period}`);
-          }
-        }
-      });
-      // bible (1 period each)
-      document.querySelectorAll('.bible:checked').forEach(cb=>{
-        occupied.add(`${cb.dataset.day}_${cb.dataset.period}`);
-      });
-      // lou (1 period each)
-      document.querySelectorAll('.lou:checked').forEach(cb=>{
-        occupied.add(`${cb.dataset.day}_${cb.dataset.period}`);
-      });
-      // movie occupies two consecutive periods (start and start+1)
-      document.querySelectorAll('.mov:checked').forEach(cb=>{
-        const s = Number(cb.dataset.start);
-        occupied.add(`${cb.dataset.day}_${s}`);
-        occupied.add(`${cb.dataset.day}_${s+1}`);
-      });
-      // 선택수업: sel-0126.. sel-0129 occupy 5th period; sel-0202 occupies 4th period
-      const selMap = {'sel-0126':5,'sel-0127':5,'sel-0128':5,'sel-0129':5,'sel-0202':4};
-      Object.entries(selMap).forEach(([id,period])=>{
-        const sel = document.getElementById(id);
-        if (!sel) return;
-        const val = sel.value && sel.value.trim();
-        if (val) {
-          // map id to day
-          const idToDay = {'sel-0126':'1/26(월)','sel-0127':'1/27(화)','sel-0128':'1/28(수)','sel-0129':'1/29(목)','sel-0202':'2/2(월)'};
-          const d = idToDay[id];
-          if (d) occupied.add(`${d}_${period}`);
-        }
-      });
-      return occupied.size;
-    }
-
-    function buildScheduleOccupation() {
-      const occ = {};
-      function mark(day, period, type) {
-        if (!occ[day]) occ[day] = {};
-        if (!occ[day][period]) occ[day][period] = [];
-        occ[day][period].push(type);
-      }
-      document.querySelectorAll('.read').forEach(s => {
-        const idx = s.selectedIndex;
-        if (idx >= 0) {
-          const opt = s.options[idx];
-          const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-          const val = opt && opt.value ? String(opt.value).trim() : '';
-          if (!isPlaceholder && val !== '') mark(s.dataset.day, Number(s.dataset.period), '책읽기');
-        }
-      });
-      document.querySelectorAll('.bible:checked').forEach(c => mark(c.dataset.day, Number(c.dataset.period), '성경동화'));
-      document.querySelectorAll('.mov:checked').forEach(c => { const start = Number(c.dataset.start); mark(c.dataset.day, start, '영화'); mark(c.dataset.day, start+1, '영화'); });
-      document.querySelectorAll('.lou:checked').forEach(c => mark(c.dataset.day, Number(c.dataset.period), '마네'));
-      // selection classes
-      const selMap = {'sel-0126':'1/26(월)','sel-0127':'1/27(화)','sel-0128':'1/28(수)','sel-0129':'1/29(목)','sel-0202':'2/2(월)'};
-      Object.entries(selMap).forEach(([id,day])=>{
-        const sel = document.getElementById(id);
-        if (!sel) return;
-        const val = sel.value && sel.value.trim();
-        if (!val) return;
-        const period = (id === 'sel-0202') ? 4 : 5;
-        mark(day, period, '선택수업');
-      });
-      return occ;
-    }
-
-    function generateCapacityIds(){
-      const ids=[];
-      const dayNames={'sel-0126':'0126','sel-0127':'0127','sel-0128':'0128','sel-0129':'0129','sel-0202':'0202'};
-      for(const [sid,day] of Object.entries(dayNames)){ const val=document.getElementById(sid).value; if(val) ids.push(`select_${day}_${val}`); }
-      document.querySelectorAll('.read').forEach(sel=>{
-        const idx = sel.selectedIndex;
-        if (idx >= 0) {
-          const opt = sel.options[idx];
-          const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-          const val = opt && opt.value ? String(opt.value).trim() : '';
-          if (!isPlaceholder && val !== '') ids.push(`책 읽기_${sel.dataset.day}_${sel.dataset.period}교시_${val}`);
-        }
-      });
-      document.querySelectorAll('.mov:checked').forEach(cb=>{ const blk = (Number(cb.dataset.start)===1)?'1-2교시':'3-4교시'; ids.push(`movie_${cb.dataset.day}_${blk}`); });
-      document.querySelectorAll('.lou:checked').forEach(cb=>ids.push(`마네_${cb.dataset.day}_${cb.dataset.period}교시`));
-      document.querySelectorAll('.bible:checked').forEach(cb=>ids.push(`bible_${cb.dataset.day}_${cb.dataset.period}교시`));
-      return [...new Set(ids)];
-    }
-
-    // New helper: count total 소영반 selections across all .read selects
-    function countSoYoungSelections() {
-      let cnt = 0;
-      document.querySelectorAll('.read').forEach(sel => {
-        const idx = sel.selectedIndex;
-        if (idx >= 0) {
-          const opt = sel.options[idx];
-          const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-          const val = opt && opt.value ? String(opt.value).trim() : '';
-          if (!isPlaceholder && val !== '' && val.replace(/\s+/g,'').toLowerCase() === '소영반') cnt++;
-        }
-      });
-      return cnt;
-    }
-
-    // Helper: count 영화 selections in first week (1/27 ~ 1/30)
-    function countFirstWeekMovieSelections() {
-      const FIRST_WEEK_DAYS = new Set(["1/27(화)","1/28(수)","1/29(목)","1/30(금)"]);
-      return Array.from(document.querySelectorAll('.mov:checked')).reduce((acc, m) => acc + (FIRST_WEEK_DAYS.has(m.dataset.day) ? 1 : 0), 0);
-    }
-
-    // Helper: count 영화 selections in second week specific days (2/2, 2/3, 2/5)
-    function countSecondWeekMovieSelections() {
-      const SECOND_WEEK_DAYS = new Set(["2/2(월)","2/3(화)","2/5(목)"]);
-      return Array.from(document.querySelectorAll('.mov:checked')).reduce((acc, m) => acc + (SECOND_WEEK_DAYS.has(m.dataset.day) ? 1 : 0), 0);
-    }
-
-    // Map label -> css class used in table
-    function getCellClassForLabel(label) {
-      if (!label) return '';
-      const l = String(label).toLowerCase();
-      if (l.includes('책과 사람')) return 'cell-book-person';
-      if (l.includes('책과 운동')) return 'cell-sports';
-      if (l.includes('영화')) return 'cell-movie';
-      if (l.includes('마네')) return 'cell-lounge';
-      if (/책읽기|책과|방학과제|책과 사람|책과/gi.test(l)) return 'cell-read';
-      if (/골든벨|독서골든벨|만국박람회/gi.test(l)) return 'cell-movie';
-      if (/두레|모임|ot|정리|스케이트장|운동/gi.test(l)) return 'cell-lounge';
-      if (/예배|졸업식/gi.test(l)) return 'cell-bible';
-      return ''; // default no color
-    }
-
-    // makeTable: build timetable with added fixed events & colors
-    function makeTable(){
-      const cls = document.getElementById('cls').value.trim();
-      const name = document.getElementById('name').value.trim();
-      if (!cls || !name) { alert('반과 이름을 입력하세요.'); return; }
-      const periods=[1,2,3,4,5,6];
-      const days=["1/26(월)","1/27(화)","1/28(수)","1/29(목)","1/30(금)","2/2(월)","2/3(화)","2/4(수)","2/5(목)","2/6(금)"];
-      const tableData={}; days.forEach(d=>{ tableData[d]={}; periods.forEach(p=>tableData[d][p]=""); });
-
-      // populate with user selections
-      document.querySelectorAll('.read').forEach(s=>{
-        const idx = s.selectedIndex;
-        if (idx >= 0) {
-          const opt = s.options[idx];
-          const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-          const val = opt && opt.value ? String(opt.value).trim() : '';
-          if (!isPlaceholder && val !== '' && tableData[s.dataset.day]) tableData[s.dataset.day][s.dataset.period] = `책읽기(${val})`;
-        }
-      });
-      document.querySelectorAll('.bible:checked').forEach(c=>{ if(tableData[c.dataset.day]) tableData[c.dataset.day][c.dataset.period] = "성경동화"; });
-      document.querySelectorAll('.mov:checked').forEach(c=>{ const s = Number(c.dataset.start); if(tableData[c.dataset.day]) { tableData[c.dataset.day][s] = "영화"; tableData[c.dataset.day][s+1] = "영화"; }});
-      document.querySelectorAll('.lou:checked').forEach(c=>{ if(tableData[c.dataset.day]) tableData[c.dataset.day][c.dataset.period] = "마네"; });
-
-      ['0126','0127','0128','0129'].forEach((k,i)=>{ const d = days[i]; const val = document.getElementById(`sel-${k}`).value; if(val && tableData[d]) tableData[d][5] = `선택수업(${val})`; });
-      const sel0202 = document.getElementById('sel-0202').value; if(sel0202 && tableData["2/2(월)"]) tableData["2/2(월)"][4] = `선택수업(${sel0202})`;
-
-      // --- Insert fixed events per user's list ---
-      if (tableData["1/26(월)"]) {
-        tableData["1/26(월)"][1] = "시작예배";
-        tableData["1/26(월)"][2] = "OT";
-        tableData["1/26(월)"][3] = "두레별 모임1";
-        tableData["1/26(월)"][4] = tableData["1/26(월)"][4] || "책읽기";
-      }
-      if (tableData["1/27(화)"]) tableData["1/27(화)"][6] = "방학과제 예선";
-      if (tableData["1/28(수)"]) tableData["1/28(수)"][6] = "두레별 모임2";
-      if (tableData["1/29(목)"]) tableData["1/29(목)"][6] = "두레별 모임3";
-      if (tableData["1/30(금)"]) { tableData["1/30(금)"][5] = "책과 사람(소명발표)"; tableData["1/30(금)"][6] = "책과 사람(소명발표)"; }
-      if (tableData["2/2(월)"]) tableData["2/2(월)"][5] = "방학과제 본선";
-      if (tableData["2/3(화)"]) { tableData["2/3(화)"][5] = "독서골든벨"; tableData["2/3(화)"][6] = "독서골든벨"; }
-      if (tableData["2/4(수)"]) {
-        tableData["2/4(수)"][1] = "책과 운동(스케이트장)";
-        tableData["2/4(수)"][2] = "책과 운동(스케이트장)";
-        tableData["2/4(수)"][3] = "책과 운동(스케이트장)";
-        tableData["2/4(수)"][4] = "책과 운동(스케이트장)";
-        tableData["2/4(수)"][5] = "고등 졸업식";
-        tableData["2/4(수)"][6] = "고등 졸업식";
-      }
-      if (tableData["2/5(목)"]) { tableData["2/5(목)"][4] = "두레별 모임4"; tableData["2/5(목)"][5] = "만국박람회"; tableData["2/5(목)"][6] = "만국박람회"; }
-      if (tableData["2/6(금)"]) {
-        tableData["2/6(금)"][1] = tableData["2/6(금)"][1] || "반별정리";
-        tableData["2/6(금)"][2] = tableData["2/6(금)"][2] || "반별정리";
-        tableData["2/6(금)"][3] = tableData["2/6(금)"][3] || "돋움예배";
-        tableData["2/6(금)"][4] = tableData["2/6(금)"][4] || "돋움예배";
-      }
-
-      // build html with class mapping
-      let html = `<h3>${escapeHtml(cls)} ${escapeHtml(name)} 시간표</h3><div class="table-wrapper"><table><tr><th>교시/날짜</th>`;
-      days.forEach(d=> html += `<th>${escapeHtml(d)}</th>`); html += `</tr>`;
-      periods.forEach(p=>{ html += `<tr><th>${p}교시</th>`; days.forEach(d=>{
-        const rawVal = tableData[d][p] || '';
-        const val = (typeof rawVal === 'string') ? rawVal : String(rawVal);
-        const cName = getCellClassForLabel(val);
-        html += `<td class="${cName}">${escapeHtml(val)}</td>`;
-      }); html += `</tr>` });
-      html += `</table></div>`;
-      document.getElementById('result').innerHTML = html;
-
-      updateSummaryLine();
-      refreshReadAndSelRemaining();
-    }
-
-    // duplicate guard for 선택수업
-    function wireSelDayDuplicateGuard() {
-      const selIds = ['sel-0126','sel-0127','sel-0128','sel-0129','sel-0202'];
-      selIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.dataset.prev = el.value || '';
-        el.addEventListener('focus', function(){ this.dataset.prev = this.value || ''; }, { passive: true });
-        el.addEventListener('change', function(){
-          const prev = this.dataset.prev || '';
-          const vals = selIds.map(i => (document.getElementById(i) ? document.getElementById(i).value.trim() : '')).filter(v => v);
-          const dupFound = vals.length !== new Set(vals).size;
-          if (dupFound) {
-            this.value = prev;
-            alert('다른 선택수업을 선택하세요');
-            checkSelValidity();
-            return;
-          }
-          this.dataset.prev = this.value || '';
-          checkSelValidity();
-        }, { passive: false });
-      });
-    }
-
-    // submit registration (validation + DB) - soyoung limit updated to 10
-    async function submitRegistration(){
-      const btn = document.getElementById('submitBtn');
-      const cls = document.getElementById('cls').value.trim();
-      const name = document.getElementById('name').value.trim();
-      if (!cls || !name) { alert('반과 이름을 입력하세요.'); return; }
-
-      // per-day book reading requirements
-      const requiredDays = ["1/27(화)","1/28(수)","1/29(목)","1/30(금)","2/2(월)","2/3(화)","2/5(목)"];
-      for (const d of requiredDays) {
-        if (!hasReadOnDay(d)) {
-          alert(`${d}에 책읽기 수업을 1교시 이상 선택해야 합니다.`);
-          return;
-        }
-      }
-
-      // total book reading hours
-      const totalRead = countReadSelections();
-      if (totalRead < 14) {
-        alert(`책읽기 시간이 부족합니다. 현재 ${totalRead}시간, 14시간 이상 필요합니다.`);
-        return;
-      }
-
-      // overall scheduled periods >= 31
-      const totalScheduled = computeTotalScheduledPeriods();
-      if (totalScheduled < 31) {
-        alert('전체시간 확인하기 바랍니다');
-        return;
-      }
-
-      // 선택수업 validation
-      const selIds = ['sel-0126','sel-0127','sel-0128','sel-0129','sel-0202'];
-      const selVals = selIds.map(id => (document.getElementById(id) ? document.getElementById(id).value : '')).filter(v => v);
-      if (selVals.length < 5 || new Set(selVals).size < 5) {
-        alert('선택수업 확인 부탁합니다.');
-        return;
-      }
-
-      // Enforce 소영반 <= 10 before submitting
-      const soyoungCount = countSoYoungSelections();
-      if (soyoungCount > 10) {
-        alert('전체 기간 동안 10회 가능합니다');
-        return;
-      }
-
-      // movie limits
-      const movCnt = document.querySelectorAll('.mov:checked').length;
-      if (movCnt > 3) { alert('영화 선택 3회까지 가능합니다'); return; }
-      const firstWeekMovCnt = countFirstWeekMovieSelections();
-      if (firstWeekMovCnt > 2) { alert('첫주에 2회 시청가능합니다'); return; }
-      const secondWeekMovCnt = countSecondWeekMovieSelections();
-      if (secondWeekMovCnt > 1) { alert('둘째주에는 1회만 시청가능합니다'); return; }
-
-      // proceed to DB save (same pattern as earlier)
-      btn.disabled = true; btn.textContent = '제출 중...';
-      try {
-        const { data: studentData, error: selectError } = await supabaseClient.from('students').select('student_id').eq('class', cls).eq('name', name);
-        if (selectError) throw new Error('학생 조회 실패: ' + selectError.message);
-        let studentId;
-        const wasExistingStudent = (studentData && studentData.length > 0); // <-- 기존에 학생이 DB에 있었는지 여부
-        if (wasExistingStudent) {
-          studentId = studentData[0].student_id;
-        } else {
-          const { data: insertData, error: insertError } = await supabaseClient.from('students').insert([{ class: cls, name: name }]).select('student_id').single();
-          if (insertError) throw new Error('학생 등록 실패: ' + insertError.message);
-          studentId = insertData.student_id;
-        }
-
-        const { data: existingRegs, error: existingError } = await supabaseClient.from('registrations').select('registration_id, course_capacity_id').eq('student_id', studentId);
-        if (existingError) throw new Error('중복 조회 실패: ' + existingError.message);
-        const existingCourseIds = existingRegs ? existingRegs.map(r => r.course_capacity_id) : [];
-        const isUpdate = existingCourseIds.length > 0;
-
-        const ACTUAL_CAPACITY_COLUMN_NAME = 'max_capacity';
-        const courseIds = generateCapacityIds();
-        for (const courseId of courseIds) {
-          const { data: capacityData, error: capacityError } = await supabaseClient.from('course_capacity').select(ACTUAL_CAPACITY_COLUMN_NAME).eq('id', courseId);
-          if (capacityError) throw new Error('정원 정보 조회 실패: ' + capacityError.message);
-          if (!capacityData || capacityData.length === 0) continue;
-          const capacity = capacityData[0][ACTUAL_CAPACITY_COLUMN_NAME];
-          if (capacity === null || capacity <= 0) continue;
-          const { count, error: countError } = await supabaseClient.from('registrations')
-            .select('*', { head: true, count: 'exact' })
-            .eq('course_capacity_id', courseId)
-            .not('student_id', 'eq', studentId);
-          if (countError) throw new Error('현재 신청 인원 카운트 실패: ' + countError.message);
-          if (count >= capacity) throw new Error(`"${courseId}" 수업이 정원 마감되었습니다! (${count}/${capacity})`);
-        }
-
-        if (isUpdate) {
-          const { error: delError } = await supabaseClient.from('registrations').delete().eq('student_id', studentId);
-          if (delError) throw new Error('기존 등록 삭제 실패: ' + delError.message);
-        }
-
-        const records = courseIds.map(cid => ({ student_id: studentId, course_capacity_id: cid }));
-        const { error: regError } = await supabaseClient.from('registrations').insert(records);
-        if (regError) throw new Error('수강 신청 실패 (DB 오류): ' + regError.message);
-
-        // 메시지 분기: 신규 학생이면 '신청 완료😁', 기존 학생이면 '수정 완료😅'
-        if (wasExistingStudent) {
-          alert('수정 완료😅');
-        } else {
-          alert('신청 완료😁');
-        }
-
-        makeTable();
-        refreshReadAndSelRemaining();
+        setStatus('course_capacity 로딩 중...', true);
+        const { data, error } = await supabase.from('course_capacity').select('*');
+        if (error) throw error;
+        courseCapacities = data || [];
+        setStatus('course_capacity 로드 완료. 옵션 구성 중...');
       } catch (err) {
         console.error(err);
-        alert('❌ ' + (err.message || err));
-      } finally {
-        btn.disabled = false; btn.textContent = '최종 수강 신청 (DB 저장)';
+        setStatus('course_capacity 로드 실패 — 강의/강의실 옵션은 course_capacity.id 기반으로 생성됩니다.');
+        courseCapacities = [];
       }
     }
 
-    function checkSelValidity() {
-      const ids = ['sel-0126','sel-0127','sel-0128','sel-0129','sel-0202'];
-      const vals = ids.map(id=>document.getElementById(id).value).filter(v=>v);
-      const msg = document.getElementById('selMsg');
-      if (vals.length < 5) msg.innerHTML = '<span class="bad">선택수업:5일 모두 선택해야합니다</span>';
-      else if (new Set(vals).size < 5) msg.innerHTML = '<span class="bad">모두 다른 과목이어야 합니다.</span>';
-      else msg.innerHTML = '<span class="ok">조건 만족</span>';
-    }
+    // parse course_capacity.id (또는 id-like string) 에서 의미있는 메타(날짜, periods, label)를 추출
+    // 결과: { id, day: "1/27(화)" or '', periods: [1] or [1,2], label: '영화 1-2교시' }
+    function parseCourseCapacityId(id){
+      if (!id || typeof id !== 'string') return null;
+      const orig = id;
+      // select_0127_<subject> -> day 1/27(화) -> period 5 (except 0202 -> 4)
+      if (/^select_(\d{4})_/i.test(id)){
+        const m = id.match(/^select_(\d{4})_(.+)$/i);
+        const code = m[1];
+        const subj = (m[2] || '').replace(/_/g,' ');
+        const map = { '0126':'1/26(월)','0127':'1/27(화)','0128':'1/28(수)','0129':'1/29(목)','0202':'2/2(월)' };
+        const day = map[code] || code;
+        const period = (code === '0202') ? 4 : 5;
+        return { id: orig, day, periods: [period], label: `선택수업 (${subj})` };
+      }
 
-    function updateSummaryLine(){
-      const totalRead = countReadSelections();
-      const movCnt = document.querySelectorAll('.mov:checked').length;
-      const louCnt = document.querySelectorAll('.lou:checked').length;
-      const bibleCnt = document.querySelectorAll('.bible:checked').length;
+      // 책 읽기 formats
+      // "책 읽기_1/27(화)_1교시_소영반" or "책읽기_1/27(화)_1교시_소영반"
+      let m = id.match(/책\s*읽기[_ ](.+?)_(\d+)교시_(.+)/i) || id.match(/책읽기[_ ](.+?)_(\d+)교시_(.+)/i);
+      if (m){
+        const day = m[1];
+        const p = Number(m[2]);
+        const subj = m[3].replace(/_/g,' ');
+        return { id: orig, day, periods: [p], label: `책읽기 (${subj})` };
+      }
 
-      const readEl = document.getElementById('summaryRead');
-      const movEl = document.getElementById('summaryMovie');
-      const louEl = document.getElementById('summaryLou');
-      const bibleEl = document.getElementById('summaryBible');
-
-      if (totalRead > 0) {
-        if (totalRead < 14) {
-          readEl.className = 'summary-item bad';
-          readEl.textContent = `책읽기: 현재 ${totalRead}시간 (14시간 필요)`;
+      // movie_1/27(화)_1-2교시 or movie_1/27(화)_1
+      m = id.match(/^(?:movie|영화)_(.+?)_(\d+(?:-\d+)?)(?:교시)?/i);
+      if (m){
+        const day = m[1];
+        const blk = m[2];
+        if (blk.includes('-')){
+          const [a,b] = blk.split('-').map(x=>Number(x));
+          return { id: orig, day, periods: [a,b], label: `영화 (${a}-${b}교시)` };
         } else {
-          readEl.className = 'summary-item ok';
-          readEl.textContent = `책읽기: 현재 ${totalRead}시간`;
+          const a = Number(blk);
+          return { id: orig, day, periods: [a, a+1], label: `영화 (${a}-${a+1}교시)` };
         }
-      } else {
-        readEl.className = 'summary-item';
-        readEl.textContent = '';
       }
 
-      if (movCnt > 0) {
-        movEl.className = movCnt > 3 ? 'summary-item bad' : 'summary-item ok';
-        movEl.textContent = `영화시청: 현재 ${movCnt}회 선택 (최대 3회)`;
-      } else {
-        movEl.className = 'summary-item';
-        movEl.textContent = '';
+      // 마네_2/2(월)_3교시
+      m = id.match(/마네_(.+?)_(\d+)교시/i) || id.match(/마네_(.+?)_(\d+)/i);
+      if (m){
+        const day = m[1];
+        const p = Number(m[2]);
+        return { id: orig, day, periods: [p], label: `마네 (${p}교시)` };
       }
 
-      if (louCnt > 0) {
-        louEl.className = louCnt > 6 ? 'summary-item bad' : 'summary-item ok';
-        louEl.textContent = `마네: 현재 ${louCnt}시간 선택 (최대 6시간)`;
-      } else {
-        louEl.className = 'summary-item';
-        louEl.textContent = '';
+      // bible formats: bible_2/2(월)_1교시 or 성경동화_...
+      m = id.match(/(?:bible|성경동화)_(.+?)_(\d+)교시/i) || id.match(/(?:bible|성경동화)_(.+?)_(\d+)/i);
+      if (m){
+        const day = m[1];
+        const p = Number(m[2]);
+        return { id: orig, day, periods: [p], label: `성경동화 (${p}교시)` };
       }
 
-      if (bibleCnt > 0) {
-        bibleEl.className = 'summary-item ok';
-        bibleEl.textContent = `성경동화: 현재 ${bibleCnt}개 선택`;
+      // fallback: if id contains a date token like "1/27(화)" or "1-27" etc.
+      m = id.match(/(1\/2[6-9]\(월\)|1\/27\(화\)|1\/28\(수\)|1\/29\(목\)|1\/30\(금\)|2\/2\(월\)|2\/3\(화\)|2\/5\(목\)|2\/6\(금\))/);
+      if (m){
+        const day = m[1];
+        // try to find a following number
+        const p2 = id.match(/(\d)교시/) || id.match(/_(\d)_/);
+        const p = p2 ? Number(p2[1]) : null;
+        return { id: orig, day, periods: p ? [p] : [], label: id };
+      }
+
+      // final fallback: return id as label with no day/period
+      return { id: orig, day: '', periods: [], label: id };
+    }
+
+    // build index of parsed offerings from courseCapacities
+    function buildOfferingsIndex(){
+      const offerings = [];
+      for (const r of courseCapacities){
+        const parsed = parseCourseCapacityId(String(r.id || r.course_capacity_id || r.course_id || ''));
+        // include capacity row meta if present (like name)
+        const labelFromMeta = (r.name || r.course_name || r.title || '').trim();
+        if (parsed){
+          if (labelFromMeta) parsed.label = `${labelFromMeta} (${parsed.label})`;
+          offerings.push(Object.assign({}, parsed, { raw: r }));
+        } else {
+          // push fallback
+          offerings.push({ id: String(r.id||r.course_capacity_id||''), day:'', periods:[], label: String(r.name||r.id||r.course_capacity_id||'') });
+        }
+      }
+      return offerings;
+    }
+
+    // current offerings index
+    let offeringsIndex = [];
+
+    // update offering select based on selected date and period
+    function updateOfferingList(){
+      if (!courseCapacities || courseCapacities.length === 0) {
+        // still try to populate from empty index
+        offeringsIndex = buildOfferingsIndex();
       } else {
-        bibleEl.className = 'summary-item';
-        bibleEl.textContent = '';
+        offeringsIndex = buildOfferingsIndex();
+      }
+      const date = document.getElementById('selDate').value;
+      const periodSel = document.getElementById('selPeriod').value;
+      const sel = document.getElementById('selOffering');
+      sel.innerHTML = '';
+      const matches = offeringsIndex.filter(o => {
+        if (!o || !o.day) return false;
+        if (o.day !== date) return false;
+        if (!o.periods || o.periods.length === 0) return true; // include if no period info
+        // handle block selection
+        if (periodSel === '1-2' || periodSel === '3-4'){
+          const [a,b] = periodSel.split('-').map(x=>Number(x));
+          // require offering to contain both periods
+          return o.periods.length>=2 && o.periods[0]===a && o.periods[1]===b;
+        } else {
+          const p = Number(periodSel);
+          // include if offering's periods contain p
+          return o.periods.includes(p);
+        }
+      });
+      if (matches.length === 0){
+        sel.innerHTML = `<option value="">해당 날짜/교시에 매칭되는 강의가 없습니다</option>`;
+        setStatus('옵션 없음');
+        return;
+      }
+      // unique by id
+      const seen = new Set();
+      const opts = matches.map(o=>{
+        if (seen.has(o.id)) return null;
+        seen.add(o.id);
+        const label = o.label || o.id;
+        return `<option value="${escapeHtml(o.id)}">${escapeHtml(label)}</option>`;
+      }).filter(Boolean).join('');
+      sel.innerHTML = opts;
+      setStatus(`${matches.length}개 강의 옵션 로드됨`);
+    }
+
+    // load attendance list for selected offering (registrations -> students)
+    async function loadAttendanceList(){
+      const offeringId = document.getElementById('selOffering').value;
+      if (!offeringId){
+        alert('강의를 선택하세요.');
+        return;
+      }
+      setStatus('명단 불러오는 중...', true);
+      document.getElementById('attendanceTableWrap').innerHTML = '';
+      document.getElementById('attendanceInfo').textContent = '';
+      try {
+        // fetch registrations for this course_capacity_id
+        const { data: regs, error: regErr } = await supabase.from('registrations').select('registration_id,student_id').eq('course_capacity_id', offeringId);
+        if (regErr) throw regErr;
+        if (!regs || regs.length === 0){
+          document.getElementById('attendanceInfo').textContent = '신청한 학생이 없습니다.';
+          setStatus('조회 완료: 0명');
+          return;
+        }
+        const studentIds = regs.map(r=>r.student_id);
+        // fetch students
+        const { data: students, error: stuErr } = await supabase.from('students').select('student_id,class,name').in('student_id', studentIds);
+        if (stuErr) throw stuErr;
+        // build map
+        const byId = {};
+        for (const s of students) byId[s.student_id] = s;
+        // order regs by student name/class for nicer display
+        const rows = regs.map(r => {
+          const s = byId[r.student_id] || { student_id: r.student_id, class:'', name:''};
+          return { registration_id: r.registration_id, student_id: r.student_id, class: s.class||'', name: s.name||'' };
+        }).sort((a,b) => {
+          if (a.class===b.class) return (''+a.name).localeCompare(b.name);
+          return (''+a.class).localeCompare(b.class);
+        });
+
+        // render table
+        let html = '<table><thead><tr><th>#</th><th>student_id</th><th>반(class)</th><th>이름</th><th>registration_id</th></tr></thead><tbody>';
+        rows.forEach((r,i)=> html += `<tr><td>${i+1}</td><td>${escapeHtml(r.student_id)}</td><td>${escapeHtml(r.class)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.registration_id)}</td></tr>`);
+        html += '</tbody></table>';
+        document.getElementById('attendanceTableWrap').innerHTML = html;
+        document.getElementById('attendanceInfo').textContent = `총 ${rows.length}명 (course_capacity_id: ${offeringId})`;
+        // store latest for CSV export
+        window.__lastAttendanceRows = rows;
+        window.__lastAttendanceMeta = { offeringId, date: document.getElementById('selDate').value, period: document.getElementById('selPeriod').value, label: document.getElementById('selOffering').selectedOptions[0]?.textContent || ''};
+        setStatus(`조회 완료: ${rows.length}명`);
+      } catch (err) {
+        console.error(err);
+        setStatus('조회 실패');
+        document.getElementById('attendanceTableWrap').innerHTML = `<div class="muted">조회 실패: ${escapeHtml(err.message || err)}</div>`;
       }
     }
 
-    // --- Event wiring and handlers (소영반 limit increased to 10) ---
-    document.addEventListener('DOMContentLoaded', () => {
-      initializeStableOptions();
-      removeSeungHyunOptionsGlobal();
-
-      // 책읽기: change handlers
-      document.querySelectorAll('.read').forEach(sel => {
-        sel.dataset.prevValue = sel.value || '';
-        const onChangeHandler = function(){
-          setTimeout(() => {
-            const day = this.dataset.day, period = Number(this.dataset.period);
-            const idx = this.selectedIndex;
-            if (idx >= 0) {
-              const opt = this.options[idx];
-              const isPlaceholder = opt && opt.dataset && opt.dataset.placeholder === '1';
-              const val = opt && opt.value ? String(opt.value).trim() : '';
-
-              // New: enforce global 소영반 limit (max 10)
-              let newCount = 0;
-              document.querySelectorAll('.read').forEach(s2 => {
-                const i2 = s2.selectedIndex;
-                if (i2 >= 0) {
-                  const o2 = s2.options[i2];
-                  const isPlaceholder2 = o2 && o2.dataset && o2.dataset.placeholder === '1';
-                  const v2 = o2 && o2.value ? String(o2.value).trim() : '';
-                  // for the element being changed, consider its new value (val)
-                  if (s2 === this) {
-                    if (!isPlaceholder && val !== '' && val.replace(/\s+/g,'').toLowerCase() === '소영반') newCount++;
-                  } else {
-                    if (!isPlaceholder2 && v2 !== '' && v2.replace(/\s+/g,'').toLowerCase() === '소영반') newCount++;
-                  }
-                }
-              });
-              if (newCount > 10) {
-                // revert to previous selection
-                const prev = this.dataset.prevValue || '';
-                let foundIndex = 0;
-                for (let i=0;i<this.options.length;i++){
-                  if ((this.options[i].value || '').trim() === prev) { foundIndex = i; break; }
-                }
-                this.selectedIndex = foundIndex;
-                alert('전체 기간 동안 10회 가능합니다');
-                updateSummaryLine();
-                return;
-              }
-
-              // prevent 승현반 selection globally
-              if (!isPlaceholder && val === '승현반') {
-                const prev = this.dataset.prevValue || '';
-                let foundIndex = 0;
-                for (let i=0;i<this.options.length;i++){
-                  if ((this.options[i].value || '').trim() === prev) { foundIndex = i; break; }
-                }
-                this.selectedIndex = foundIndex;
-                alert('모든 책읽기 선택지에서 승현반은 선택할 수 없습니다.');
-                updateSummaryLine();
-                return;
-              }
-
-              if (!isPlaceholder && val !== '') {
-                const occ = buildScheduleOccupation();
-                if (occ[day] && occ[day][period] && occ[day][period].some(t => t !== '책읽기')) {
-                  // selection conflicts -> revert and alert
-                  this.selectedIndex = 0;
-                  alert(`${day} ${period}교시는 이미 다른 수업이 선택되어 있습니다.`);
-                  updateSummaryLine();
-                  return;
-                } else {
-                  document.getElementById('readMsg').innerHTML = '';
-                }
-              }
-            }
-            // update prevValue after successful change
-            this.dataset.prevValue = (this.value || '');
-            updateSummaryLine();
-            refreshReadAndSelRemaining();
-          }, 60);
-        };
-        sel.addEventListener('change', onChangeHandler, { passive: false });
-        sel.addEventListener('blur', onChangeHandler, { passive: false });
-        sel.addEventListener('touchend', onChangeHandler, { passive: false });
-        sel.addEventListener('pointerup', onChangeHandler, { passive: false });
-        sel.addEventListener('focus', () => { sel.dataset.prevValue = sel.value || ''; refreshReadAndSelRemaining(); }, { passive: true });
-      });
-
-      // bible handlers
-      document.querySelectorAll('.bible').forEach(cb => {
-        cb.addEventListener('change', function(){
-          if (this.checked) {
-            const occ = buildScheduleOccupation();
-            const d = this.dataset.day, p = Number(this.dataset.period);
-            if (occ[d] && occ[d][p] && occ[d][p].some(t => t !== '성경동화')) {
-              this.checked = false;
-              alert(`${d} ${p}교시는 이미 다른 수업이 선택되어 있습니다.`);
-              updateSummaryLine();
-              return;
-            } else {
-              document.getElementById('bibleMsg').innerHTML = '';
-            }
-          } else {
-            document.getElementById('bibleMsg').innerHTML = '';
-          }
-          updateSummaryLine();
-        }, { passive: false });
-      });
-
-      // mov handlers (apricot color applied in makeTable via class)
-      const FIRST_WEEK_DAYS = new Set(["1/27(화)","1/28(수)","1/29(목)","1/30(금)"]);
-      const SECOND_WEEK_DAYS = new Set(["2/2(월)","2/3(화)","2/5(목)"]); // 둘째주 영화 제한 대상
-      document.querySelectorAll('.mov').forEach(cb => {
-        cb.addEventListener('change', function(){
-          const day = this.dataset.day;
-          if (this.checked) {
-            // uncheck other movie options on the same day
-            document.querySelectorAll('.mov').forEach(m => { if (m !== this && m.dataset.day === day && m.checked) m.checked = false; });
-
-            // first-week constraint (unchanged)
-            const firstWeekCount = Array.from(document.querySelectorAll('.mov:checked')).reduce((acc, m) => acc + (FIRST_WEEK_DAYS.has(m.dataset.day) ? 1 : 0), 0);
-            if (firstWeekCount > 2) { this.checked = false; alert('첫주에 2회 시청가능합니다'); updateSummaryLine(); return; }
-
-            // second-week constraint for specific days: only 1 movie across 2/2,2/3,2/5
-            const secondWeekCount = Array.from(document.querySelectorAll('.mov:checked')).reduce((acc, m) => acc + (SECOND_WEEK_DAYS.has(m.dataset.day) ? 1 : 0), 0);
-            if (secondWeekCount > 1) { this.checked = false; alert('둘째주에는 1회만 시청가능합니다'); updateSummaryLine(); return; }
-
-            // overall movie count constraint (unchanged)
-            const total = document.querySelectorAll('.mov:checked').length;
-            if (total > 3) { this.checked = false; alert('영화 선택 3회까지 가능합니다'); updateSummaryLine(); return; }
-
-            const s = Number(this.dataset.start);
-            const occ = buildScheduleOccupation();
-            for (let p of [s, s+1]) {
-              if (occ[this.dataset.day] && occ[this.dataset.day][p] && occ[this.dataset.day][p].some(t => t !== '영화')) {
-                this.checked = false;
-                alert(`${this.dataset.day} ${p}교시는 이미 다른 수업이 있습니다.`);
-                return;
-              }
-            }
-            document.getElementById('movMsg').innerHTML = '';
-          } else {
-            document.getElementById('movMsg').innerHTML = '';
-          }
-          updateSummaryLine();
-        }, { passive: false });
-      });
-
-      // lou handlers (마네) - color applied in makeTable via class 'cell-lounge'
-      document.querySelectorAll('.lou').forEach(cb => {
-        cb.addEventListener('change', function(){
-          const day = this.dataset.day;
-          if (this.checked) {
-            document.querySelectorAll('.lou').forEach(x => { if (x !== this && x.dataset.day === day && x.checked) x.checked = false; });
-            const totalLou = document.querySelectorAll('.lou:checked').length;
-            if (totalLou > 6) { this.checked = false; document.getElementById('louMsg').innerHTML = '<span class="bad">마네는 최대 6시간까지만 선택 가능합니다.</span>'; updateSummaryLine(); return; }
-            const occ = buildScheduleOccupation();
-            const p = Number(this.dataset.period);
-            if (occ[this.dataset.day] && occ[this.dataset.day][p] && occ[this.dataset.day][p].some(t => t !== '마네')) {
-              this.checked = false;
-              alert(`${this.dataset.day} ${p}교시는 이미 다른 수업이 있습니다.`);
-              return;
-            }
-            document.getElementById('louMsg').innerHTML = '';
-          } else {
-            document.getElementById('louMsg').innerHTML = '';
-          }
-          updateSummaryLine();
-        }, { passive: false });
-      });
-
-      // selDay duplicate guard
-      wireSelDayDuplicateGuard();
-
-      document.querySelectorAll('.selDay').forEach(s => {
-        s.addEventListener('change', checkSelValidity, { passive: true });
-        s.addEventListener('focus', () => refreshReadAndSelRemaining(), { passive: true });
-      });
-
-      document.getElementById('makeBtn').addEventListener('click', function(e){ e.preventDefault(); makeTable(); }, { passive: false });
-      document.getElementById('makeBtn').addEventListener('pointerup', function(e){ e.preventDefault(); makeTable(); }, { passive: false });
-      document.getElementById('submitBtn').addEventListener('click', function(e){ e.preventDefault(); submitRegistration(); }, { passive: false });
-
-      checkSelValidity(); updateSummaryLine(); updateSummaryLine(); refreshReadAndSelRemaining();
-
-      startSeatsPolling(5000);
-      window.addEventListener('beforeunload', () => stopSeatsPolling());
-      console.log('App initialized and remaining-seat refresh started.');
-    });
-
-    // polling helpers (unchanged)
-    let seatsIntervalHandle = null;
-    function startSeatsPolling(intervalMs = 5000){
-      if (seatsIntervalHandle) clearInterval(seatsIntervalHandle);
-      initializeStableOptions();
-      removeSeungHyunOptionsGlobal();
-      refreshReadAndSelRemaining().then(()=> {
-        seatsIntervalHandle = setInterval(refreshReadAndSelRemaining, intervalMs);
-      });
+    // CSV export of currently loaded attendance
+    function exportCsvOfCurrent(){
+      const rows = window.__lastAttendanceRows || [];
+      const meta = window.__lastAttendanceMeta || {};
+      if (!rows || rows.length === 0) {
+        alert('내보낼 출석 데이터가 없습니다. 먼저 명단을 불러오세요.');
+        return;
+      }
+      const header = ['index','student_id','class','name','registration_id'];
+      const csvRows = [header];
+      rows.forEach((r,i)=> csvRows.push([i+1, r.student_id, r.class, r.name, r.registration_id]));
+      const filename = `attendance_${meta.date || ''}_${(meta.label||meta.offeringId||'unnamed').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+      downloadCsv(csvRows, filename);
     }
-    function stopSeatsPolling(){ if (seatsIntervalHandle) clearInterval(seatsIntervalHandle); seatsIntervalHandle = null; }
 
+    function downloadCsv(rows, filename){
+      const csv = rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename || 'attendance.csv';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // escape helper
+    function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+    // kick off
+    init();
   </script>
 </body>
 </html>

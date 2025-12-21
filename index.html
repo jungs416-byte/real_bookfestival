@@ -81,6 +81,7 @@
 
     // 캐시: course_capacity 전체(관리자용 인덱스)
     let courseCapacities = [];
+    let courseCapacitiesLoaded = false;
 
     // --- Helpers: normalization to avoid mobile Safari mismatch issues ---
     // Mobile Safari sometimes returns values that differ in spacing / unicode parens etc.
@@ -100,7 +101,7 @@
         .toLowerCase();
     }
 
-    // escape helper (function declaration hoisted)
+    // escape helper
     function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
     // 초기화: 날짜 드롭다운 채우기, course_capacity 로드
@@ -108,6 +109,10 @@
       const selDate = document.getElementById('selDate');
       // Use normalized key as option value to avoid subtle mismatch on mobile browsers
       selDate.innerHTML = DAYS.map(d => `<option value="${escapeHtml(normalizeDayKey(d))}">${escapeHtml(d)}</option>`).join('');
+      // wire focus/blur handlers on selDate to avoid replacing offering options while native picker is open
+      selDate.addEventListener('focus', () => { selDate.dataset.pickerOpen = '1'; });
+      selDate.addEventListener('blur', () => { delete selDate.dataset.pickerOpen; debounceUpdateOfferingList(120); });
+
       // load course_capacity records
       await loadCourseCapacities();
       // wire events
@@ -133,11 +138,13 @@
         const { data, error } = await supabase.from('course_capacity').select('*');
         if (error) throw error;
         courseCapacities = data || [];
+        courseCapacitiesLoaded = true;
         setStatus('course_capacity 로드 완료. 옵션 구성 중...');
       } catch (err) {
         console.error(err);
         setStatus('course_capacity 로드 실패 — 강의/강의실 옵션은 course_capacity.id 기반으로 생성됩니다.');
         courseCapacities = [];
+        courseCapacitiesLoaded = false;
       }
     }
 
@@ -240,27 +247,47 @@
 
     // update offering select based on selected date and period
     function updateOfferingList(){
-      if (!courseCapacities || courseCapacities.length === 0) {
-        offeringsIndex = buildOfferingsIndex();
-      } else {
-        offeringsIndex = buildOfferingsIndex();
+      // If course capacities aren't yet loaded, don't try to clear options — keep existing until load finishes
+      if (!courseCapacitiesLoaded) {
+        setStatus('옵션 준비 중 (course_capacity 로딩 대기)', true);
+        return;
       }
+
+      offeringsIndex = buildOfferingsIndex();
+
       const selDateEl = document.getElementById('selDate');
       const dateKey = selDateEl.value; // normalized key stored at init
       const periodSel = document.getElementById('selPeriod').value;
       const sel = document.getElementById('selOffering');
-      sel.innerHTML = '';
 
+      // If user currently has date-picker open (iOS shows native picker on focus),
+      // avoid wiping/replacing the offering list immediately — wait until blur/change.
+      if (selDateEl.dataset && selDateEl.dataset.pickerOpen) {
+        // do not change selOffering while the native picker is open
+        setStatus('선택 중...', true);
+        return;
+      }
+
+      // robust match: try multiple matching strategies (normalized day key, fallback to normalized day text)
       const matches = offeringsIndex.filter(o => {
-        // offerings without a detected day are still considered (but below we require day match)
-        if (!o || !o.dayKey) return false;
-        if (!dateKey) return false;
-        if (o.dayKey !== dateKey) return false;
+        if (!o) return false;
+        // try dayKey comparison first
+        if (dateKey && o.dayKey && o.dayKey === dateKey) {
+          // matched day — now check period compatibility
+        } else {
+          // as fallback, compare normalized display text (in case selDate.value got changed by browser)
+          const selDisplay = selDateEl.selectedOptions && selDateEl.selectedOptions[0] ? normalizeDayKey(selDateEl.selectedOptions[0].textContent || '') : '';
+          if (selDisplay && o.dayKey && o.dayKey === selDisplay) {
+            // matched by display text
+          } else {
+            return false;
+          }
+        }
+
         if (!o.periods || o.periods.length === 0) return true; // include if no period info
         // handle block selection
         if (periodSel === '1-2' || periodSel === '3-4'){
           const [a,b] = periodSel.split('-').map(x=>Number(x));
-          // require offering to contain both periods
           return o.periods.length >= 2 && o.periods[0] === a && o.periods[1] === b;
         } else {
           const p = Number(periodSel);
@@ -279,7 +306,7 @@
         if (seen.has(o.id)) return null;
         seen.add(o.id);
         const label = o.label || o.id;
-        // use original id as option value (not the normalized day key) because registrations use that id
+        // use original id as option value (registrations use that id)
         return `<option value="${escapeHtml(o.id)}">${escapeHtml(label)}</option>`;
       }).filter(Boolean).join('');
       sel.innerHTML = opts;

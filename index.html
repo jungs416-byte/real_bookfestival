@@ -82,15 +82,37 @@
     // 캐시: course_capacity 전체(관리자용 인덱스)
     let courseCapacities = [];
 
+    // --- Helpers: normalization to avoid mobile Safari mismatch issues ---
+    // Mobile Safari sometimes returns values that differ in spacing / unicode parens etc.
+    // Normalize both the selDate.value and parsed offering.day before comparing.
+    function normalizeDayKey(s) {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .trim()
+        // convert fullwidth parentheses to ascii
+        .replace(/[\uFF08\uFF09（）]/g, c => (c === '（' ? '(' : (c === '）' ? ')' : c)))
+        // normalize multiple spaces
+        .replace(/\s+/g, ' ')
+        // normalize slash spacing
+        .replace(/\s*\/\s*/g, '/')
+        // normalize different hyphen chars to ascii hyphen
+        .replace(/[\u2010\u2011\u2012\u2013\u2014]/g, '-')
+        .toLowerCase();
+    }
+
+    // escape helper (function declaration hoisted)
+    function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
     // 초기화: 날짜 드롭다운 채우기, course_capacity 로드
     async function init(){
       const selDate = document.getElementById('selDate');
-      selDate.innerHTML = DAYS.map(d => `<option value="${d}">${d}</option>`).join('');
+      // Use normalized key as option value to avoid subtle mismatch on mobile browsers
+      selDate.innerHTML = DAYS.map(d => `<option value="${escapeHtml(normalizeDayKey(d))}">${escapeHtml(d)}</option>`).join('');
       // load course_capacity records
       await loadCourseCapacities();
       // wire events
-      document.getElementById('selDate').addEventListener('change', updateOfferingList);
-      document.getElementById('selPeriod').addEventListener('change', updateOfferingList);
+      document.getElementById('selDate').addEventListener('change', () => debounceUpdateOfferingList());
+      document.getElementById('selPeriod').addEventListener('change', () => debounceUpdateOfferingList());
       document.getElementById('btnLoad').addEventListener('click', loadAttendanceList);
       document.getElementById('btnExport').addEventListener('click', exportCsvOfCurrent);
       // initial fill
@@ -136,7 +158,6 @@
       }
 
       // 책 읽기 formats
-      // "책 읽기_1/27(화)_1교시_소영반" or "책읽기_1/27(화)_1교시_소영반"
       let m = id.match(/책\s*읽기[_ ](.+?)_(\d+)교시_(.+)/i) || id.match(/책읽기[_ ](.+?)_(\d+)교시_(.+)/i);
       if (m){
         const day = m[1];
@@ -175,11 +196,10 @@
         return { id: orig, day, periods: [p], label: `성경동화 (${p}교시)` };
       }
 
-      // fallback: if id contains a date token like "1/27(화)" or "1-27" etc.
-      m = id.match(/(1\/2[6-9]\(월\)|1\/27\(화\)|1\/28\(수\)|1\/29\(목\)|1\/30\(금\)|2\/2\(월\)|2\/3\(화\)|2\/5\(목\)|2\/6\(금\))/);
+      // fallback: try detect date token
+      m = id.match(/(1\/26\(월\)|1\/27\(화\)|1\/28\(수\)|1\/29\(목\)|1\/30\(금\)|2\/2\(월\)|2\/3\(화\)|2\/4\(수\)|2\/5\(목\)|2\/6\(금\))/);
       if (m){
         const day = m[1];
-        // try to find a following number
         const p2 = id.match(/(\d)교시/) || id.match(/_(\d)_/);
         const p = p2 ? Number(p2[1]) : null;
         return { id: orig, day, periods: p ? [p] : [], label: id };
@@ -194,14 +214,15 @@
       const offerings = [];
       for (const r of courseCapacities){
         const parsed = parseCourseCapacityId(String(r.id || r.course_capacity_id || r.course_id || ''));
-        // include capacity row meta if present (like name)
         const labelFromMeta = (r.name || r.course_name || r.title || '').trim();
         if (parsed){
           if (labelFromMeta) parsed.label = `${labelFromMeta} (${parsed.label})`;
+          // add normalized key for reliable matching (mobile browsers)
+          parsed.dayKey = normalizeDayKey(parsed.day || '');
           offerings.push(Object.assign({}, parsed, { raw: r }));
         } else {
-          // push fallback
-          offerings.push({ id: String(r.id||r.course_capacity_id||''), day:'', periods:[], label: String(r.name||r.id||r.course_capacity_id||'') });
+          const fallback = { id: String(r.id||r.course_capacity_id||''), day:'', dayKey:'', periods:[], label: String(r.name||r.id||r.course_capacity_id||'') };
+          offerings.push(fallback);
         }
       }
       return offerings;
@@ -210,33 +231,43 @@
     // current offerings index
     let offeringsIndex = [];
 
+    // Debounce helper to avoid rapid changes that can confuse mobile pickers
+    let updateTimeout = null;
+    function debounceUpdateOfferingList(delay = 120){
+      if (updateTimeout) clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => { updateOfferingList(); updateTimeout = null; }, delay);
+    }
+
     // update offering select based on selected date and period
     function updateOfferingList(){
       if (!courseCapacities || courseCapacities.length === 0) {
-        // still try to populate from empty index
         offeringsIndex = buildOfferingsIndex();
       } else {
         offeringsIndex = buildOfferingsIndex();
       }
-      const date = document.getElementById('selDate').value;
+      const selDateEl = document.getElementById('selDate');
+      const dateKey = selDateEl.value; // normalized key stored at init
       const periodSel = document.getElementById('selPeriod').value;
       const sel = document.getElementById('selOffering');
       sel.innerHTML = '';
+
       const matches = offeringsIndex.filter(o => {
-        if (!o || !o.day) return false;
-        if (o.day !== date) return false;
+        // offerings without a detected day are still considered (but below we require day match)
+        if (!o || !o.dayKey) return false;
+        if (!dateKey) return false;
+        if (o.dayKey !== dateKey) return false;
         if (!o.periods || o.periods.length === 0) return true; // include if no period info
         // handle block selection
         if (periodSel === '1-2' || periodSel === '3-4'){
           const [a,b] = periodSel.split('-').map(x=>Number(x));
           // require offering to contain both periods
-          return o.periods.length>=2 && o.periods[0]===a && o.periods[1]===b;
+          return o.periods.length >= 2 && o.periods[0] === a && o.periods[1] === b;
         } else {
           const p = Number(periodSel);
-          // include if offering's periods contain p
           return o.periods.includes(p);
         }
       });
+
       if (matches.length === 0){
         sel.innerHTML = `<option value="">해당 날짜/교시에 매칭되는 강의가 없습니다</option>`;
         setStatus('옵션 없음');
@@ -248,6 +279,7 @@
         if (seen.has(o.id)) return null;
         seen.add(o.id);
         const label = o.label || o.id;
+        // use original id as option value (not the normalized day key) because registrations use that id
         return `<option value="${escapeHtml(o.id)}">${escapeHtml(label)}</option>`;
       }).filter(Boolean).join('');
       sel.innerHTML = opts;
@@ -294,10 +326,17 @@
         rows.forEach((r,i)=> html += `<tr><td>${i+1}</td><td>${escapeHtml(r.student_id)}</td><td>${escapeHtml(r.class)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.registration_id)}</td></tr>`);
         html += '</tbody></table>';
         document.getElementById('attendanceTableWrap').innerHTML = html;
+        // use the selected option's text for a friendly date label
+        const metaLabel = document.getElementById('selOffering').selectedOptions[0]?.textContent || '';
         document.getElementById('attendanceInfo').textContent = `총 ${rows.length}명 (course_capacity_id: ${offeringId})`;
-        // store latest for CSV export
+        // store latest for CSV export (use the displayed date text for filename)
         window.__lastAttendanceRows = rows;
-        window.__lastAttendanceMeta = { offeringId, date: document.getElementById('selDate').value, period: document.getElementById('selPeriod').value, label: document.getElementById('selOffering').selectedOptions[0]?.textContent || ''};
+        window.__lastAttendanceMeta = {
+          offeringId,
+          dateDisplay: document.getElementById('selDate').selectedOptions[0]?.textContent || '',
+          period: document.getElementById('selPeriod').value,
+          label: metaLabel
+        };
         setStatus(`조회 완료: ${rows.length}명`);
       } catch (err) {
         console.error(err);
@@ -317,7 +356,9 @@
       const header = ['index','student_id','class','name','registration_id'];
       const csvRows = [header];
       rows.forEach((r,i)=> csvRows.push([i+1, r.student_id, r.class, r.name, r.registration_id]));
-      const filename = `attendance_${meta.date || ''}_${(meta.label||meta.offeringId||'unnamed').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+      const datePart = (meta.dateDisplay || '').replace(/\s+/g,'_').replace(/[^\w\-()]/g,'');
+      const labelPart = (meta.label||meta.offeringId||'unnamed').replace(/\s+/g,'_').replace(/[^\w\-()]/g,'');
+      const filename = `attendance_${datePart}_${labelPart}_${new Date().toISOString().slice(0,10)}.csv`;
       downloadCsv(csvRows, filename);
     }
 
@@ -331,9 +372,6 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-
-    // escape helper
-    function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
     // kick off
     init();

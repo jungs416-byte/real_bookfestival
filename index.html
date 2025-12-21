@@ -9,6 +9,7 @@
     body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;max-width:1100px;margin:16px auto;padding:16px}
     h1{margin:0 0 12px}
     .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+    /* 기본 컨트롤 스타일 */
     select,input[type="text"]{padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px}
     button{padding:8px 12px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
     button.ghost{background:#f5f5f5;color:#000;border:1px solid #ddd}
@@ -20,9 +21,33 @@
     .info{font-size:13px;margin-bottom:8px}
     .actions{display:flex;gap:8px;margin-top:8px}
     .loading{color:#666;font-style:italic}
+
+    /* ----- 날짜 select 영역을 넓혀 모바일에서 터치 영역 확보 (수정된 부분) ----- */
+    /* .date-wrapper를 만들어 날짜 레이블과 select의 클릭 영역을 넓힘 */
+    .date-wrapper { display:inline-flex; align-items:center; gap:6px; min-width:220px; }
+    .date-wrapper label { display:inline-flex; flex-direction:column; gap:4px; width:100%; }
+    #selDate {
+      /* 충분한 터치 영역 확보 */
+      min-width:220px;
+      width:220px;
+      max-width:320px;
+      padding:12px 10px;
+      -webkit-appearance: menulist-button; /* 모바일에서 보기 안정성 */
+      appearance: menulist-button;
+    }
+
+    /* 데스크탑에서는 레이아웃 유지 */
     @media (max-width:880px){
       .controls{flex-direction:column;align-items:stretch}
+      .date-wrapper { min-width:unset; width:100%; }
+      .date-wrapper label { width:100%; }
+      #selDate { width:100%; max-width:none; }
     }
+
+    /* iOS에서 select 주변 영역을 더 크게 만들어 오동작 가능성 낮춤 */
+    #selDate::-ms-expand{ display: block; }
+    /* 시각적 강조 (선택센터) */
+    .date-label-title { font-size:13px; color:#222; font-weight:600; }
   </style>
 </head>
 <body>
@@ -31,10 +56,12 @@
 
   <div class="panel">
     <div class="controls">
-      <label>
-        날짜
-        <select id="selDate"></select>
-      </label>
+      <div class="date-wrapper">
+        <label>
+          <span class="date-label-title">날짜</span>
+          <select id="selDate"></select>
+        </label>
+      </div>
 
       <label>
         교시
@@ -75,52 +102,45 @@
     const { createClient } = window.supabase;
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 날짜 상수 (index-2 / index-3과 동일)
+    // 날짜 상수
     const DAYS = ["1/26(월)","1/27(화)","1/28(수)","1/29(목)","1/30(금)","2/2(월)","2/3(화)","2/4(수)","2/5(목)","2/6(금)"];
-    const PERIODS = [1,2,3,4,5,6];
 
-    // 캐시: course_capacity 전체(관리자용 인덱스)
+    // 캐시
     let courseCapacities = [];
     let courseCapacitiesLoaded = false;
 
-    // --- Helpers: normalization to avoid mobile Safari mismatch issues ---
-    // Mobile Safari sometimes returns values that differ in spacing / unicode parens etc.
-    // Normalize both the selDate.value and parsed offering.day before comparing.
+    // 정규화 헬퍼: 모바일 브라우저 문자열 차이 방지
     function normalizeDayKey(s) {
       if (s === null || s === undefined) return '';
       return String(s)
         .trim()
-        // convert fullwidth parentheses to ascii
         .replace(/[\uFF08\uFF09（）]/g, c => (c === '（' ? '(' : (c === '）' ? ')' : c)))
-        // normalize multiple spaces
         .replace(/\s+/g, ' ')
-        // normalize slash spacing
         .replace(/\s*\/\s*/g, '/')
-        // normalize different hyphen chars to ascii hyphen
         .replace(/[\u2010\u2011\u2012\u2013\u2014]/g, '-')
         .toLowerCase();
     }
 
-    // escape helper
     function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-    // 초기화: 날짜 드롭다운 채우기, course_capacity 로드
     async function init(){
       const selDate = document.getElementById('selDate');
-      // Use normalized key as option value to avoid subtle mismatch on mobile browsers
+      // selDate 값은 정규화된 키로 세팅 (display 텍스트는 원본)
       selDate.innerHTML = DAYS.map(d => `<option value="${escapeHtml(normalizeDayKey(d))}">${escapeHtml(d)}</option>`).join('');
-      // wire focus/blur handlers on selDate to avoid replacing offering options while native picker is open
+
+      // focus/blur 토글로 네이티브 픽커 열려있는 동안 selOffering 덮어쓰기 방지
       selDate.addEventListener('focus', () => { selDate.dataset.pickerOpen = '1'; });
       selDate.addEventListener('blur', () => { delete selDate.dataset.pickerOpen; debounceUpdateOfferingList(120); });
 
-      // load course_capacity records
+      // load capacities
       await loadCourseCapacities();
-      // wire events
+
+      // events
       document.getElementById('selDate').addEventListener('change', () => debounceUpdateOfferingList());
       document.getElementById('selPeriod').addEventListener('change', () => debounceUpdateOfferingList());
       document.getElementById('btnLoad').addEventListener('click', loadAttendanceList);
       document.getElementById('btnExport').addEventListener('click', exportCsvOfCurrent);
-      // initial fill
+
       updateOfferingList();
       setStatus('준비 완료');
     }
@@ -131,7 +151,6 @@
       s.className = loading ? 'loading' : 'muted';
     }
 
-    // load all course_capacity rows to courseCapacities array
     async function loadCourseCapacities(){
       try {
         setStatus('course_capacity 로딩 중...', true);
@@ -148,12 +167,9 @@
       }
     }
 
-    // parse course_capacity.id (또는 id-like string) 에서 의미있는 메타(날짜, periods, label)를 추출
-    // 결과: { id, day: "1/27(화)" or '', periods: [1] or [1,2], label: '영화 1-2교시' }
     function parseCourseCapacityId(id){
       if (!id || typeof id !== 'string') return null;
       const orig = id;
-      // select_0127_<subject> -> day 1/27(화) -> period 5 (except 0202 -> 4)
       if (/^select_(\d{4})_/i.test(id)){
         const m = id.match(/^select_(\d{4})_(.+)$/i);
         const code = m[1];
@@ -163,8 +179,6 @@
         const period = (code === '0202') ? 4 : 5;
         return { id: orig, day, periods: [period], label: `선택수업 (${subj})` };
       }
-
-      // 책 읽기 formats
       let m = id.match(/책\s*읽기[_ ](.+?)_(\d+)교시_(.+)/i) || id.match(/책읽기[_ ](.+?)_(\d+)교시_(.+)/i);
       if (m){
         const day = m[1];
@@ -172,8 +186,6 @@
         const subj = m[3].replace(/_/g,' ');
         return { id: orig, day, periods: [p], label: `책읽기 (${subj})` };
       }
-
-      // movie_1/27(화)_1-2교시 or movie_1/27(화)_1
       m = id.match(/^(?:movie|영화)_(.+?)_(\d+(?:-\d+)?)(?:교시)?/i);
       if (m){
         const day = m[1];
@@ -186,24 +198,18 @@
           return { id: orig, day, periods: [a, a+1], label: `영화 (${a}-${a+1}교시)` };
         }
       }
-
-      // 마네_2/2(월)_3교시
       m = id.match(/마네_(.+?)_(\d+)교시/i) || id.match(/마네_(.+?)_(\d+)/i);
       if (m){
         const day = m[1];
         const p = Number(m[2]);
         return { id: orig, day, periods: [p], label: `마네 (${p}교시)` };
       }
-
-      // bible formats: bible_2/2(월)_1교시 or 성경동화_...
       m = id.match(/(?:bible|성경동화)_(.+?)_(\d+)교시/i) || id.match(/(?:bible|성경동화)_(.+?)_(\d+)/i);
       if (m){
         const day = m[1];
         const p = Number(m[2]);
         return { id: orig, day, periods: [p], label: `성경동화 (${p}교시)` };
       }
-
-      // fallback: try detect date token
       m = id.match(/(1\/26\(월\)|1\/27\(화\)|1\/28\(수\)|1\/29\(목\)|1\/30\(금\)|2\/2\(월\)|2\/3\(화\)|2\/4\(수\)|2\/5\(목\)|2\/6\(금\))/);
       if (m){
         const day = m[1];
@@ -211,12 +217,9 @@
         const p = p2 ? Number(p2[1]) : null;
         return { id: orig, day, periods: p ? [p] : [], label: id };
       }
-
-      // final fallback: return id as label with no day/period
       return { id: orig, day: '', periods: [], label: id };
     }
 
-    // build index of parsed offerings from courseCapacities
     function buildOfferingsIndex(){
       const offerings = [];
       for (const r of courseCapacities){
@@ -224,30 +227,24 @@
         const labelFromMeta = (r.name || r.course_name || r.title || '').trim();
         if (parsed){
           if (labelFromMeta) parsed.label = `${labelFromMeta} (${parsed.label})`;
-          // add normalized key for reliable matching (mobile browsers)
           parsed.dayKey = normalizeDayKey(parsed.day || '');
           offerings.push(Object.assign({}, parsed, { raw: r }));
         } else {
-          const fallback = { id: String(r.id||r.course_capacity_id||''), day:'', dayKey:'', periods:[], label: String(r.name||r.id||r.course_capacity_id||'') };
-          offerings.push(fallback);
+          offerings.push({ id: String(r.id||r.course_capacity_id||''), day:'', dayKey:'', periods:[], label: String(r.name||r.id||r.course_capacity_id||'') });
         }
       }
       return offerings;
     }
 
-    // current offerings index
     let offeringsIndex = [];
-
-    // Debounce helper to avoid rapid changes that can confuse mobile pickers
     let updateTimeout = null;
     function debounceUpdateOfferingList(delay = 120){
       if (updateTimeout) clearTimeout(updateTimeout);
       updateTimeout = setTimeout(() => { updateOfferingList(); updateTimeout = null; }, delay);
     }
 
-    // update offering select based on selected date and period
     function updateOfferingList(){
-      // If course capacities aren't yet loaded, don't try to clear options — keep existing until load finishes
+      // don't change options until capacities are loaded
       if (!courseCapacitiesLoaded) {
         setStatus('옵션 준비 중 (course_capacity 로딩 대기)', true);
         return;
@@ -256,36 +253,25 @@
       offeringsIndex = buildOfferingsIndex();
 
       const selDateEl = document.getElementById('selDate');
-      const dateKey = selDateEl.value; // normalized key stored at init
+      const dateKey = selDateEl.value;
       const periodSel = document.getElementById('selPeriod').value;
       const sel = document.getElementById('selOffering');
 
-      // If user currently has date-picker open (iOS shows native picker on focus),
-      // avoid wiping/replacing the offering list immediately — wait until blur/change.
+      // If native date picker is open on mobile, avoid immediate replacing of options
       if (selDateEl.dataset && selDateEl.dataset.pickerOpen) {
-        // do not change selOffering while the native picker is open
         setStatus('선택 중...', true);
         return;
       }
 
-      // robust match: try multiple matching strategies (normalized day key, fallback to normalized day text)
       const matches = offeringsIndex.filter(o => {
-        if (!o) return false;
-        // try dayKey comparison first
-        if (dateKey && o.dayKey && o.dayKey === dateKey) {
-          // matched day — now check period compatibility
-        } else {
-          // as fallback, compare normalized display text (in case selDate.value got changed by browser)
+        if (!o || !o.dayKey) return false;
+        if (!dateKey) return false;
+        if (o.dayKey !== dateKey) {
+          // fallback to displayed text normalization
           const selDisplay = selDateEl.selectedOptions && selDateEl.selectedOptions[0] ? normalizeDayKey(selDateEl.selectedOptions[0].textContent || '') : '';
-          if (selDisplay && o.dayKey && o.dayKey === selDisplay) {
-            // matched by display text
-          } else {
-            return false;
-          }
+          if (!selDisplay || o.dayKey !== selDisplay) return false;
         }
-
-        if (!o.periods || o.periods.length === 0) return true; // include if no period info
-        // handle block selection
+        if (!o.periods || o.periods.length === 0) return true;
         if (periodSel === '1-2' || periodSel === '3-4'){
           const [a,b] = periodSel.split('-').map(x=>Number(x));
           return o.periods.length >= 2 && o.periods[0] === a && o.periods[1] === b;
@@ -300,20 +286,17 @@
         setStatus('옵션 없음');
         return;
       }
-      // unique by id
       const seen = new Set();
       const opts = matches.map(o=>{
         if (seen.has(o.id)) return null;
         seen.add(o.id);
         const label = o.label || o.id;
-        // use original id as option value (registrations use that id)
         return `<option value="${escapeHtml(o.id)}">${escapeHtml(label)}</option>`;
       }).filter(Boolean).join('');
       sel.innerHTML = opts;
       setStatus(`${matches.length}개 강의 옵션 로드됨`);
     }
 
-    // load attendance list for selected offering (registrations -> students)
     async function loadAttendanceList(){
       const offeringId = document.getElementById('selOffering').value;
       if (!offeringId){
@@ -324,7 +307,6 @@
       document.getElementById('attendanceTableWrap').innerHTML = '';
       document.getElementById('attendanceInfo').textContent = '';
       try {
-        // fetch registrations for this course_capacity_id
         const { data: regs, error: regErr } = await supabase.from('registrations').select('registration_id,student_id').eq('course_capacity_id', offeringId);
         if (regErr) throw regErr;
         if (!regs || regs.length === 0){
@@ -333,13 +315,10 @@
           return;
         }
         const studentIds = regs.map(r=>r.student_id);
-        // fetch students
         const { data: students, error: stuErr } = await supabase.from('students').select('student_id,class,name').in('student_id', studentIds);
         if (stuErr) throw stuErr;
-        // build map
         const byId = {};
         for (const s of students) byId[s.student_id] = s;
-        // order regs by student name/class for nicer display
         const rows = regs.map(r => {
           const s = byId[r.student_id] || { student_id: r.student_id, class:'', name:''};
           return { registration_id: r.registration_id, student_id: r.student_id, class: s.class||'', name: s.name||'' };
@@ -348,15 +327,12 @@
           return (''+a.class).localeCompare(b.class);
         });
 
-        // render table
         let html = '<table><thead><tr><th>#</th><th>student_id</th><th>반(class)</th><th>이름</th><th>registration_id</th></tr></thead><tbody>';
         rows.forEach((r,i)=> html += `<tr><td>${i+1}</td><td>${escapeHtml(r.student_id)}</td><td>${escapeHtml(r.class)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.registration_id)}</td></tr>`);
         html += '</tbody></table>';
         document.getElementById('attendanceTableWrap').innerHTML = html;
-        // use the selected option's text for a friendly date label
         const metaLabel = document.getElementById('selOffering').selectedOptions[0]?.textContent || '';
         document.getElementById('attendanceInfo').textContent = `총 ${rows.length}명 (course_capacity_id: ${offeringId})`;
-        // store latest for CSV export (use the displayed date text for filename)
         window.__lastAttendanceRows = rows;
         window.__lastAttendanceMeta = {
           offeringId,
@@ -372,7 +348,6 @@
       }
     }
 
-    // CSV export of currently loaded attendance
     function exportCsvOfCurrent(){
       const rows = window.__lastAttendanceRows || [];
       const meta = window.__lastAttendanceMeta || {};
@@ -400,7 +375,7 @@
       URL.revokeObjectURL(url);
     }
 
-    // kick off
+    // 시작
     init();
   </script>
 </body>

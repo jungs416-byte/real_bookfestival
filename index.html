@@ -72,8 +72,20 @@
     // Supabase 설정 (index-2/index-3과 동일한 값 사용)
     const SUPABASE_URL = 'https://metdfyhhcvvjmkkwyvcf.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ldGRmeWhoY3Z2am1ra3d5dmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5OTQzOTUsImV4cCI6MjA4MDU3MDM5NX0.vcC6tjeYU9CQlC92jJOKgcf3cR0t36g5J19pk2uQrDs';
-    const { createClient } = window.supabase;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 안전한 supabase 클라이언트 생성
+    // 기존 전역 이름(supabase)과 충돌하지 않도록 supabaseClient 사용
+    const { createClient } = window.supabase || {};
+    let supabaseClient = null;
+    try {
+      if (!createClient) throw new Error('Supabase 라이브러리가 아직 로드되지 않았습니다.');
+      // 전역에 이미 생성된 supabaseClient가 있으면 재사용 (중복 선언 방지)
+      supabaseClient = window.__supabase_client || createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.__supabase_client = supabaseClient;
+    } catch (e) {
+      console.error('Supabase 초기화 실패:', e);
+      document.getElementById('attendanceTableWrap').innerHTML = `<div class="muted">Supabase 초기화 실패: ${e.message || e}</div>`;
+    }
 
     // 날짜 상수 (index-2 / index-3과 동일)
     const DAYS = ["1/26(월)","1/27(화)","1/28(수)","1/29(목)","1/30(금)","2/2(월)","2/3(화)","2/4(수)","2/5(목)","2/6(금)"];
@@ -83,39 +95,28 @@
     let courseCapacities = [];
 
     // --- Helpers: normalization to avoid mobile Safari mismatch issues ---
-    // Mobile Safari sometimes returns values that differ in spacing / unicode parens etc.
-    // Normalize both the selDate.value and parsed offering.day before comparing.
     function normalizeDayKey(s) {
       if (s === null || s === undefined) return '';
       return String(s)
         .trim()
-        // convert fullwidth parentheses to ascii
         .replace(/[\uFF08\uFF09（）]/g, c => (c === '（' ? '(' : (c === '）' ? ')' : c)))
-        // normalize multiple spaces
         .replace(/\s+/g, ' ')
-        // normalize slash spacing
         .replace(/\s*\/\s*/g, '/')
-        // normalize different hyphen chars to ascii hyphen
         .replace(/[\u2010\u2011\u2012\u2013\u2014]/g, '-')
         .toLowerCase();
     }
 
-    // escape helper (function declaration hoisted)
     function escapeHtml(s){ if (s===null||s===undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
     // 초기화: 날짜 드롭다운 채우기, course_capacity 로드
     async function init(){
       const selDate = document.getElementById('selDate');
-      // Use normalized key as option value to avoid subtle mismatch on mobile browsers
       selDate.innerHTML = DAYS.map(d => `<option value="${escapeHtml(normalizeDayKey(d))}">${escapeHtml(d)}</option>`).join('');
-      // load course_capacity records
       await loadCourseCapacities();
-      // wire events
       document.getElementById('selDate').addEventListener('change', () => debounceUpdateOfferingList());
       document.getElementById('selPeriod').addEventListener('change', () => debounceUpdateOfferingList());
       document.getElementById('btnLoad').addEventListener('click', loadAttendanceList);
       document.getElementById('btnExport').addEventListener('click', exportCsvOfCurrent);
-      // initial fill
       updateOfferingList();
       setStatus('준비 완료');
     }
@@ -128,9 +129,10 @@
 
     // load all course_capacity rows to courseCapacities array
     async function loadCourseCapacities(){
+      if (!supabaseClient) { courseCapacities = []; setStatus('Supabase 미사용: 옵션 로드 불가'); return; }
       try {
         setStatus('course_capacity 로딩 중...', true);
-        const { data, error } = await supabase.from('course_capacity').select('*');
+        const { data, error } = await supabaseClient.from('course_capacity').select('*');
         if (error) throw error;
         courseCapacities = data || [];
         setStatus('course_capacity 로드 완료. 옵션 구성 중...');
@@ -141,12 +143,10 @@
       }
     }
 
-    // parse course_capacity.id (또는 id-like string) 에서 의미있는 메타(날짜, periods, label)를 추출
-    // 결과: { id, day: "1/27(화)" or '', periods: [1] or [1,2], label: '영화 1-2교시' }
+    // parse course_capacity.id -> meta
     function parseCourseCapacityId(id){
       if (!id || typeof id !== 'string') return null;
       const orig = id;
-      // select_0127_<subject> -> day 1/27(화) -> period 5 (except 0202 -> 4)
       if (/^select_(\d{4})_/i.test(id)){
         const m = id.match(/^select_(\d{4})_(.+)$/i);
         const code = m[1];
@@ -157,7 +157,6 @@
         return { id: orig, day, periods: [period], label: `선택수업 (${subj})` };
       }
 
-      // 책 읽기 formats
       let m = id.match(/책\s*읽기[_ ](.+?)_(\d+)교시_(.+)/i) || id.match(/책읽기[_ ](.+?)_(\d+)교시_(.+)/i);
       if (m){
         const day = m[1];
@@ -166,7 +165,6 @@
         return { id: orig, day, periods: [p], label: `책읽기 (${subj})` };
       }
 
-      // movie_1/27(화)_1-2교시 or movie_1/27(화)_1
       m = id.match(/^(?:movie|영화)_(.+?)_(\d+(?:-\d+)?)(?:교시)?/i);
       if (m){
         const day = m[1];
@@ -180,7 +178,6 @@
         }
       }
 
-      // 마네_2/2(월)_3교시
       m = id.match(/마네_(.+?)_(\d+)교시/i) || id.match(/마네_(.+?)_(\d+)/i);
       if (m){
         const day = m[1];
@@ -188,7 +185,6 @@
         return { id: orig, day, periods: [p], label: `마네 (${p}교시)` };
       }
 
-      // bible formats: bible_2/2(월)_1교시 or 성경동화_...
       m = id.match(/(?:bible|성경동화)_(.+?)_(\d+)교시/i) || id.match(/(?:bible|성경동화)_(.+?)_(\d+)/i);
       if (m){
         const day = m[1];
@@ -196,7 +192,6 @@
         return { id: orig, day, periods: [p], label: `성경동화 (${p}교시)` };
       }
 
-      // fallback: try detect date token
       m = id.match(/(1\/26\(월\)|1\/27\(화\)|1\/28\(수\)|1\/29\(목\)|1\/30\(금\)|2\/2\(월\)|2\/3\(화\)|2\/4\(수\)|2\/5\(목\)|2\/6\(금\))/);
       if (m){
         const day = m[1];
@@ -205,11 +200,9 @@
         return { id: orig, day, periods: p ? [p] : [], label: id };
       }
 
-      // final fallback: return id as label with no day/period
       return { id: orig, day: '', periods: [], label: id };
     }
 
-    // build index of parsed offerings from courseCapacities
     function buildOfferingsIndex(){
       const offerings = [];
       for (const r of courseCapacities){
@@ -217,7 +210,6 @@
         const labelFromMeta = (r.name || r.course_name || r.title || '').trim();
         if (parsed){
           if (labelFromMeta) parsed.label = `${labelFromMeta} (${parsed.label})`;
-          // add normalized key for reliable matching (mobile browsers)
           parsed.dayKey = normalizeDayKey(parsed.day || '');
           offerings.push(Object.assign({}, parsed, { raw: r }));
         } else {
@@ -228,39 +220,29 @@
       return offerings;
     }
 
-    // current offerings index
     let offeringsIndex = [];
 
-    // Debounce helper to avoid rapid changes that can confuse mobile pickers
     let updateTimeout = null;
     function debounceUpdateOfferingList(delay = 120){
       if (updateTimeout) clearTimeout(updateTimeout);
       updateTimeout = setTimeout(() => { updateOfferingList(); updateTimeout = null; }, delay);
     }
 
-    // update offering select based on selected date and period
     function updateOfferingList(){
-      if (!courseCapacities || courseCapacities.length === 0) {
-        offeringsIndex = buildOfferingsIndex();
-      } else {
-        offeringsIndex = buildOfferingsIndex();
-      }
+      offeringsIndex = buildOfferingsIndex();
       const selDateEl = document.getElementById('selDate');
-      const dateKey = selDateEl.value; // normalized key stored at init
+      const dateKey = selDateEl.value;
       const periodSel = document.getElementById('selPeriod').value;
       const sel = document.getElementById('selOffering');
       sel.innerHTML = '';
 
       const matches = offeringsIndex.filter(o => {
-        // offerings without a detected day are still considered (but below we require day match)
         if (!o || !o.dayKey) return false;
         if (!dateKey) return false;
         if (o.dayKey !== dateKey) return false;
-        if (!o.periods || o.periods.length === 0) return true; // include if no period info
-        // handle block selection
+        if (!o.periods || o.periods.length === 0) return true;
         if (periodSel === '1-2' || periodSel === '3-4'){
           const [a,b] = periodSel.split('-').map(x=>Number(x));
-          // require offering to contain both periods
           return o.periods.length >= 2 && o.periods[0] === a && o.periods[1] === b;
         } else {
           const p = Number(periodSel);
@@ -273,13 +255,11 @@
         setStatus('옵션 없음');
         return;
       }
-      // unique by id
       const seen = new Set();
       const opts = matches.map(o=>{
         if (seen.has(o.id)) return null;
         seen.add(o.id);
         const label = o.label || o.id;
-        // use original id as option value (not the normalized day key) because registrations use that id
         return `<option value="${escapeHtml(o.id)}">${escapeHtml(label)}</option>`;
       }).filter(Boolean).join('');
       sel.innerHTML = opts;
@@ -297,8 +277,8 @@
       document.getElementById('attendanceTableWrap').innerHTML = '';
       document.getElementById('attendanceInfo').textContent = '';
       try {
-        // fetch registrations for this course_capacity_id
-        const { data: regs, error: regErr } = await supabase.from('registrations').select('registration_id,student_id').eq('course_capacity_id', offeringId);
+        if (!supabaseClient) throw new Error('Supabase 클라이언트가 준비되지 않았습니다.');
+        const { data: regs, error: regErr } = await supabaseClient.from('registrations').select('registration_id,student_id').eq('course_capacity_id', offeringId);
         if (regErr) throw regErr;
         if (!regs || regs.length === 0){
           document.getElementById('attendanceInfo').textContent = '신청한 학생이 없습니다.';
@@ -306,13 +286,10 @@
           return;
         }
         const studentIds = regs.map(r=>r.student_id);
-        // fetch students
-        const { data: students, error: stuErr } = await supabase.from('students').select('student_id,class,name').in('student_id', studentIds);
+        const { data: students, error: stuErr } = await supabaseClient.from('students').select('student_id,class,name').in('student_id', studentIds);
         if (stuErr) throw stuErr;
-        // build map
         const byId = {};
         for (const s of students) byId[s.student_id] = s;
-        // order regs by student name/class for nicer display
         const rows = regs.map(r => {
           const s = byId[r.student_id] || { student_id: r.student_id, class:'', name:''};
           return { registration_id: r.registration_id, student_id: r.student_id, class: s.class||'', name: s.name||'' };
@@ -321,15 +298,12 @@
           return (''+a.class).localeCompare(b.class);
         });
 
-        // render table
         let html = '<table><thead><tr><th>#</th><th>student_id</th><th>반(class)</th><th>이름</th><th>registration_id</th></tr></thead><tbody>';
         rows.forEach((r,i)=> html += `<tr><td>${i+1}</td><td>${escapeHtml(r.student_id)}</td><td>${escapeHtml(r.class)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.registration_id)}</td></tr>`);
         html += '</tbody></table>';
         document.getElementById('attendanceTableWrap').innerHTML = html;
-        // use the selected option's text for a friendly date label
         const metaLabel = document.getElementById('selOffering').selectedOptions[0]?.textContent || '';
         document.getElementById('attendanceInfo').textContent = `총 ${rows.length}명 (course_capacity_id: ${offeringId})`;
-        // store latest for CSV export (use the displayed date text for filename)
         window.__lastAttendanceRows = rows;
         window.__lastAttendanceMeta = {
           offeringId,
@@ -345,7 +319,6 @@
       }
     }
 
-    // CSV export of currently loaded attendance
     function exportCsvOfCurrent(){
       const rows = window.__lastAttendanceRows || [];
       const meta = window.__lastAttendanceMeta || {};
